@@ -1,11 +1,8 @@
 {{define "dashboard_stats"}}
-<div class="range-toggle">
-  <a hx-get="/dashboard/partial?range=day" hx-target="#dashboard-stats" hx-swap="innerHTML"
-     class="{{if eq .Range "day"}}active{{end}}">Day</a>
-  <a hx-get="/dashboard/partial?range=week" hx-target="#dashboard-stats" hx-swap="innerHTML"
-     class="{{if eq .Range "week"}}active{{end}}">Week</a>
-  <a hx-get="/dashboard/partial?range=month" hx-target="#dashboard-stats" hx-swap="innerHTML"
-     class="{{if eq .Range "month"}}active{{end}}">Month</a>
+<div class="month-nav">
+  <a class="btn secondary" hx-get="/dashboard/partial?month={{.PrevMonth}}" hx-target="#dashboard-stats" hx-swap="innerHTML">&lsaquo; Prev</a>
+  <span class="month-label">{{.MonthLabel}}</span>
+  <a class="btn secondary" hx-get="/dashboard/partial?month={{.NextMonth}}" hx-target="#dashboard-stats" hx-swap="innerHTML">Next &rsaquo;</a>
 </div>
 
 {{if not .Stats}}
@@ -15,9 +12,20 @@
   <div class="card">
     <div class="name">{{.Habit.Name}}</div>
     <div class="meta">
-      {{.CompletionPct}}% complete &middot; current streak {{.CurrentStreak}} &middot; best streak {{.BestStreak}}
+      {{.CompletionPct}}% this month &middot; current streak {{.CurrentStreak}} &middot; best streak {{.BestStreak}}
     </div>
-    <div class="chart">{{.ChartSVG}}</div>
+    <div class="calendar">
+      <div class="calendar-weekdays">
+        <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
+      </div>
+      {{range .Weeks}}
+      <div class="calendar-week">
+        {{range .}}
+        <span class="calendar-day{{if not .InMonth}} out-month{{end}}{{if .Complete}} complete{{end}}{{if .Today}} today{{end}}" title="{{.Date}}">{{.Day}}</span>
+        {{end}}
+      </div>
+      {{end}}
+    </div>
   </div>
   {{end}}
 {{end}}
