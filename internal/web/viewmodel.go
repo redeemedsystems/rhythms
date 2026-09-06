@@ -10,20 +10,27 @@ import (
 const historyDays = 7
 
 type historyDayVM struct {
-	Date    string
-	Value   domain.EntryValue
-	IsToday bool
+	Date      string
+	Value     domain.EntryValue
+	Completed bool
+	IsToday   bool
 }
 
 type habitVM struct {
-	ID         int64
-	Name       string
-	Question   string
-	Color      string
-	Archived   bool
-	TodayDate  string
-	TodayValue domain.EntryValue
-	History    []historyDayVM // oldest first, historyDays long, ending today
+	ID                int64
+	Name              string
+	Question          string
+	Color             string
+	Archived          bool
+	IsNumerical       bool
+	Unit              string
+	TodayDate         string
+	TodayValue        domain.EntryValue
+	TodayNumericValue float64
+	TodayCompleted    bool
+	CurrentStreak     int
+	ScorePercent      int
+	History           []historyDayVM // oldest first, historyDays long, ending today
 
 	// ListFilterQuery is appended to this row's action URLs (e.g.
 	// "?archived=1") so archiving/deleting from the archived view re-renders
@@ -31,35 +38,56 @@ type habitVM struct {
 	ListFilterQuery string
 }
 
+// buildHabitVM computes a habit's full display state: it fetches the
+// habit's ENTIRE entry history (required by ComputeEntries — see its doc
+// comment), derives the computed timeline once, then reads streak, score,
+// and the display strip off of that single pass.
 func (s *Server) buildHabitVM(ctx context.Context, h domain.Habit) (habitVM, error) {
 	today := domain.Today()
-	from := today.AddDays(-(historyDays - 1))
 
-	entries, err := s.entries.ListRange(ctx, h.ID, from, today)
+	original, err := s.entries.ListAll(ctx, h.ID)
 	if err != nil {
 		return habitVM{}, fmt.Errorf("list entries for habit %d: %w", h.ID, err)
 	}
-	byDate := make(map[string]domain.EntryValue, len(entries))
-	for _, e := range entries {
-		byDate[e.Date.String()] = e.Value
+	computed := domain.ComputeEntries(h, original)
+
+	from := today.AddDays(-(historyDays - 1))
+	for _, e := range computed {
+		if e.Date.Before(from) {
+			from = e.Date
+		}
 	}
+	dense := domain.DenseRange(computed, from, today)
 
 	vm := habitVM{
-		ID:        h.ID,
-		Name:      h.Name,
-		Question:  h.Question,
-		Color:     colorHex(h.Color),
-		Archived:  h.Archived,
-		TodayDate: today.String(),
+		ID:            h.ID,
+		Name:          h.Name,
+		Question:      h.Question,
+		Color:         colorHex(h.Color),
+		Archived:      h.Archived,
+		IsNumerical:   h.Type == domain.Numerical,
+		Unit:          h.Unit,
+		TodayDate:     today.String(),
+		CurrentStreak: domain.CurrentStreak(h, dense, today),
 	}
-	vm.TodayValue = byDate[vm.TodayDate] // zero value (No) if absent, which is correct
 
-	for d := from; !d.After(today); d = d.AddDays(1) {
-		ds := d.String()
+	todayEntry := dense[len(dense)-1] // dense always ends at `to` == today
+	vm.TodayValue = todayEntry.Value
+	vm.TodayNumericValue = todayEntry.NumericValue
+	vm.TodayCompleted = domain.IsCompleted(h, todayEntry)
+
+	if series := domain.ScoreSeries(h, dense); len(series) > 0 {
+		vm.ScorePercent = int(series[len(series)-1].Value*100 + 0.5)
+	}
+
+	// `from` is always <= today-(historyDays-1) by construction above, so
+	// dense's last historyDays elements are exactly the display strip.
+	for _, e := range dense[len(dense)-historyDays:] {
 		vm.History = append(vm.History, historyDayVM{
-			Date:    ds,
-			Value:   byDate[ds],
-			IsToday: ds == vm.TodayDate,
+			Date:      e.Date.String(),
+			Value:     e.Value,
+			Completed: domain.IsCompleted(h, e),
+			IsToday:   e.Date.Equal(today),
 		})
 	}
 

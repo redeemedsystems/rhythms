@@ -11,14 +11,14 @@ func TestNextToggleValue(t *testing.T) {
 	}{
 		{"auto to manual, skip off", YesAuto, false, YesManual},
 		{"auto to manual, skip on", YesAuto, true, YesManual},
+		{"no to manual, skip off", No, false, YesManual},
+		{"no to manual, skip on", No, true, YesManual},
 		{"manual to no, skip off", YesManual, false, No},
 		{"manual to skip, skip on", YesManual, true, Skip},
-		{"no to manual, skip off", No, false, YesManual},
-		{"no to unknown, skip on", No, true, Unknown},
 		{"skip to no, skip off", Skip, false, No},
-		{"skip to no, skip on", Skip, true, No},
-		{"unknown to manual, skip off", Unknown, false, YesManual},
-		{"unknown to manual, skip on", Unknown, true, YesManual},
+		{"skip to unknown, skip on", Skip, true, Unknown},
+		{"unknown to no, skip off", Unknown, false, No},
+		{"unknown to no, skip on", Unknown, true, No},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -27,6 +27,35 @@ func TestNextToggleValue(t *testing.T) {
 				t.Errorf("NextToggleValue(%v, %v) = %v, want %v", tt.current, tt.skipEnabled, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestNextToggleValueFullCycleWithSkipEnabled(t *testing.T) {
+	// Regression test: the first tap on an untouched day must land on
+	// YesManual (mark done), not Unknown — that's the overwhelmingly
+	// common interaction, and getting the cycle order backwards here once
+	// made every fresh habit's first click do the wrong thing.
+	got := No
+	want := []EntryValue{YesManual, Skip, Unknown, No}
+	for i, w := range want {
+		got = NextToggleValue(got, true)
+		if got != w {
+			t.Fatalf("step %d: got %v, want %v", i, got, w)
+		}
+	}
+}
+
+func TestNextToggleValueTwoStateCycleWithSkipDisabled(t *testing.T) {
+	got := No
+	for i := 0; i < 4; i++ {
+		got = NextToggleValue(got, false)
+		want := YesManual
+		if i%2 == 1 {
+			want = No
+		}
+		if got != want {
+			t.Fatalf("step %d: got %v, want %v", i, got, want)
+		}
 	}
 }
 
@@ -54,6 +83,7 @@ func TestIsCompleted(t *testing.T) {
 		{"at-least below target", numericAtLeast, Entry{NumericValue: 4}, false},
 		{"at-most below target", numericAtMost, Entry{NumericValue: 4}, true},
 		{"at-most above target", numericAtMost, Entry{NumericValue: 6}, false},
+		{"at-most with zero target, no data recorded", Habit{Type: Numerical, TargetType: AtMost, TargetValue: 0}, Entry{Value: Unknown, NumericValue: 0}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

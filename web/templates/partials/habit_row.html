@@ -1,27 +1,44 @@
 {{define "habit_row"}}
-<li class="habit-row{{if .Archived}} habit-row-archived{{end}}" id="habit-{{.ID}}" style="--habit-color: {{.Color}}">
-    <button
-        class="checkmark checkmark-{{.TodayValue}}"
-        hx-post="/habits/{{.ID}}/entries/{{.TodayDate}}"
-        hx-target="#habit-{{.ID}}"
-        hx-swap="outerHTML"
-        aria-label="Toggle today's entry for {{.Name}}"
-    >&#10003;</button>
+<li class="habit-row{{if .Archived}} habit-row-archived{{end}}" id="habit-{{.ID}}" data-habit-id="{{.ID}}" style="--habit-color: {{.Color}}">
+    <span class="drag-handle" aria-hidden="true">&#8942;&#8942;</span>
+
+    {{if .IsNumerical}}
+        <span id="habit-{{.ID}}-value">{{template "numeric_value_cell" .}}</span>
+    {{else}}
+        <button
+            class="checkmark checkmark-{{.TodayValue}}"
+            hx-post="/habits/{{.ID}}/entries/{{.TodayDate}}"
+            hx-target="#habit-{{.ID}}"
+            hx-swap="outerHTML"
+            aria-label="Toggle today's entry for {{.Name}}"
+        >&#10003;</button>
+    {{end}}
 
     <div class="habit-info">
         <a href="/habits/{{.ID}}/edit" class="habit-name">{{.Name}}</a>
         {{if .Question}}<div class="habit-question">{{.Question}}</div>{{end}}
+        <div class="habit-meta">
+            {{if .CurrentStreak}}<span class="streak-badge">&#128293; {{.CurrentStreak}}</span>{{end}}
+            <span class="score-badge">{{.ScorePercent}}%</span>
+        </div>
     </div>
 
     <div class="history-strip">
         {{range .History}}
-            <button
-                class="history-square history-square-{{.Value}}{{if .IsToday}} history-square-today{{end}}"
-                hx-post="/habits/{{$.ID}}/entries/{{.Date}}"
-                hx-target="#habit-{{$.ID}}"
-                hx-swap="outerHTML"
-                title="{{.Date}}"
-            ></button>
+            {{if $.IsNumerical}}
+                <span
+                    class="history-square{{if .Completed}} history-square-complete{{end}}{{if .IsToday}} history-square-today{{end}}"
+                    title="{{.Date}}"
+                ></span>
+            {{else}}
+                <button
+                    class="history-square history-square-{{.Value}}{{if .Completed}} history-square-complete{{end}}{{if .IsToday}} history-square-today{{end}}"
+                    hx-post="/habits/{{$.ID}}/entries/{{.Date}}"
+                    hx-target="#habit-{{$.ID}}"
+                    hx-swap="outerHTML"
+                    title="{{.Date}}"
+                ></button>
+            {{end}}
         {{end}}
     </div>
 
@@ -34,4 +51,26 @@
         </form>
     </div>
 </li>
+{{end}}
+
+{{define "numeric_value_cell"}}
+<button
+    class="numeric-value{{if .TodayCompleted}} numeric-value-complete{{end}}"
+    hx-get="/habits/{{.ID}}/entries/{{.TodayDate}}"
+    hx-target="#habit-{{.ID}}-value"
+    hx-swap="innerHTML"
+>{{.TodayNumericValue}}{{if .Unit}} {{.Unit}}{{end}}</button>
+{{end}}
+
+{{define "numeric_entry_form"}}
+<form
+    class="numeric-entry-form"
+    hx-post="/habits/{{.HabitID}}/entries/{{.Date}}"
+    hx-target="#habit-{{.HabitID}}"
+    hx-swap="outerHTML"
+>
+    <input type="number" step="any" name="value" value="{{.Value}}" autofocus>
+    {{if .Unit}}<span>{{.Unit}}</span>{{end}}
+    <button type="submit" class="btn btn-primary">Save</button>
+</form>
 {{end}}

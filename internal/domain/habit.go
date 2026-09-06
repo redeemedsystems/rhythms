@@ -15,15 +15,30 @@ const (
 )
 
 // Frequency represents "N times per D days", e.g. daily=1/1, weekly=1/7,
-// 3x/week=3/7. M1 only ever uses DailyFrequency; full support lands in M2.
+// 3x/week=3/7.
 type Frequency struct {
 	Numerator   int
 	Denominator int
 }
 
+// NewFrequency normalizes any numerator==denominator ratio (5/5, 3/3, ...) to
+// 1/1, matching uHabits' own Frequency constructor — every "daily-equivalent"
+// ratio collapses to the same canonical value.
+func NewFrequency(numerator, denominator int) Frequency {
+	if numerator == denominator {
+		return Frequency{Numerator: 1, Denominator: 1}
+	}
+	return Frequency{Numerator: numerator, Denominator: denominator}
+}
+
 func DailyFrequency() Frequency { return Frequency{Numerator: 1, Denominator: 1} }
 
 func (f Frequency) IsDaily() bool { return f.Numerator == f.Denominator }
+
+// Float64 is "N times per D days" as a ratio, e.g. weekly (1/7) = 0.142857.
+func (f Frequency) Float64() float64 {
+	return float64(f.Numerator) / float64(f.Denominator)
+}
 
 type Habit struct {
 	ID          int64

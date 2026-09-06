@@ -36,7 +36,7 @@ func TestEntryRepoUpsertAndGet(t *testing.T) {
 		t.Fatal("Get before upsert: expected no entry, got one")
 	}
 
-	if err := repo.Upsert(ctx, domain.Entry{HabitID: habitID, Date: date, Value: domain.YesManual}); err != nil {
+	if err := repo.Upsert(ctx, domain.YesNo, domain.Entry{HabitID: habitID, Date: date, Value: domain.YesManual}); err != nil {
 		t.Fatalf("Upsert: %v", err)
 	}
 
@@ -57,10 +57,10 @@ func TestEntryRepoUpsertOverwritesSameDate(t *testing.T) {
 	repo, habitID := newTestEntryRepo(t)
 	date := domain.NewDate(2026, 9, 6)
 
-	if err := repo.Upsert(ctx, domain.Entry{HabitID: habitID, Date: date, Value: domain.YesManual}); err != nil {
+	if err := repo.Upsert(ctx, domain.YesNo, domain.Entry{HabitID: habitID, Date: date, Value: domain.YesManual}); err != nil {
 		t.Fatalf("first Upsert: %v", err)
 	}
-	if err := repo.Upsert(ctx, domain.Entry{HabitID: habitID, Date: date, Value: domain.No}); err != nil {
+	if err := repo.Upsert(ctx, domain.YesNo, domain.Entry{HabitID: habitID, Date: date, Value: domain.No}); err != nil {
 		t.Fatalf("second Upsert: %v", err)
 	}
 
@@ -73,13 +73,43 @@ func TestEntryRepoUpsertOverwritesSameDate(t *testing.T) {
 	}
 }
 
+func TestEntryRepoUpsertNumericEncoding(t *testing.T) {
+	ctx := context.Background()
+	repo, habitID := newTestEntryRepo(t)
+	date := domain.NewDate(2026, 9, 6)
+
+	// A legitimate numeric value of exactly 0 (e.g. "0 cigarettes smoked")
+	// must round-trip as 0, not be confused with the boolean encoding path.
+	if err := repo.Upsert(ctx, domain.Numerical, domain.Entry{HabitID: habitID, Date: date, NumericValue: 0}); err != nil {
+		t.Fatalf("Upsert zero: %v", err)
+	}
+	entry, ok, err := repo.Get(ctx, habitID, date)
+	if err != nil || !ok {
+		t.Fatalf("Get: ok=%v err=%v", ok, err)
+	}
+	if entry.NumericValue != 0 {
+		t.Errorf("NumericValue = %v, want 0", entry.NumericValue)
+	}
+
+	if err := repo.Upsert(ctx, domain.Numerical, domain.Entry{HabitID: habitID, Date: date, NumericValue: 5.25}); err != nil {
+		t.Fatalf("Upsert 5.25: %v", err)
+	}
+	entry, ok, err = repo.Get(ctx, habitID, date)
+	if err != nil || !ok {
+		t.Fatalf("Get: ok=%v err=%v", ok, err)
+	}
+	if entry.NumericValue != 5.25 {
+		t.Errorf("NumericValue = %v, want 5.25", entry.NumericValue)
+	}
+}
+
 func TestEntryRepoListRange(t *testing.T) {
 	ctx := context.Background()
 	repo, habitID := newTestEntryRepo(t)
 
 	for day := 1; day <= 5; day++ {
 		date := domain.NewDate(2026, 9, day)
-		if err := repo.Upsert(ctx, domain.Entry{HabitID: habitID, Date: date, Value: domain.YesManual}); err != nil {
+		if err := repo.Upsert(ctx, domain.YesNo, domain.Entry{HabitID: habitID, Date: date, Value: domain.YesManual}); err != nil {
 			t.Fatalf("Upsert day %d: %v", day, err)
 		}
 	}

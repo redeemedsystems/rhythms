@@ -46,6 +46,8 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /habits/{id}", s.handleHabitUpdate)
 	mux.HandleFunc("POST /habits/{id}/archive", s.handleHabitArchiveToggle)
 	mux.HandleFunc("POST /habits/{id}/delete", s.handleHabitDelete)
+	mux.HandleFunc("POST /habits/reorder", s.handleHabitReorder)
+	mux.HandleFunc("GET /habits/{id}/entries/{date}", s.handleEntryEditForm)
 	mux.HandleFunc("POST /habits/{id}/entries/{date}", s.handleEntryToggle)
 
 	staticFS, err := fs.Sub(webassets.StaticFS, "static")

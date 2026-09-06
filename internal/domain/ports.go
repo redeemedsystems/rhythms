@@ -11,12 +11,29 @@ type HabitRepo interface {
 	Update(ctx context.Context, h Habit) error
 	SetArchived(ctx context.Context, id int64, archived bool) error
 	Delete(ctx context.Context, id int64) error
+
+	// Reorder assigns positions 0..len(orderedIDs)-1 in the given order, in
+	// a single transaction. It's the persistence side of drag-reorder.
+	Reorder(ctx context.Context, orderedIDs []int64) error
 }
 
 type EntryRepo interface {
+	// ListAll returns every known entry for a habit, oldest first. Required
+	// by ComputeEntries, which needs the habit's entire history to build
+	// auto-fill intervals correctly — see ComputeEntries' doc comment.
+	ListAll(ctx context.Context, habitID int64) ([]Entry, error)
+
 	// ListRange returns entries in [from, to], one per date that has a row.
 	// Dates with no row are simply absent from the result, not zero-valued.
+	// Both Value and NumericValue are always decoded from the stored row;
+	// which one is meaningful depends on the habit's type (see Upsert).
 	ListRange(ctx context.Context, habitID int64, from, to Date) ([]Entry, error)
 	Get(ctx context.Context, habitID int64, date Date) (Entry, bool, error)
-	Upsert(ctx context.Context, e Entry) error
+
+	// Upsert stores an entry. habitType decides how it's encoded: boolean
+	// habits store Value (the EntryValue enum) directly, numeric habits
+	// store NumericValue as a fixed-point integer (*1000) in the same
+	// column — matching uHabits' own schema convention of one dual-purpose
+	// column per habit type (see the rewrite plan's deviation #6).
+	Upsert(ctx context.Context, habitType HabitType, e Entry) error
 }

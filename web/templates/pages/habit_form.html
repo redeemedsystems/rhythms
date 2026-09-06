@@ -36,6 +36,37 @@
         {{end}}
     </fieldset>
 
+    <fieldset class="type-picker">
+        <legend>Type</legend>
+        <label><input type="radio" name="type" value="YES_NO" {{if ne .Habit.Type "NUMERICAL"}}checked{{end}}> Yes/No</label>
+        <label><input type="radio" name="type" value="NUMERICAL" {{if eq .Habit.Type "NUMERICAL"}}checked{{end}}> Numerical</label>
+    </fieldset>
+
+    <div class="numeric-fields">
+        <label>
+            Unit <span class="hint">(e.g. "km", "pages", "cigarettes")</span>
+            <input type="text" name="unit" value="{{.Habit.Unit}}">
+        </label>
+        <label>
+            Target value
+            <input type="number" step="any" name="target_value" value="{{if .Habit.TargetValue}}{{.Habit.TargetValue}}{{else}}0{{end}}">
+        </label>
+        <fieldset>
+            <legend>Target type</legend>
+            <label><input type="radio" name="target_type" value="AT_LEAST" {{if ne .Habit.TargetType "AT_MOST"}}checked{{end}}> At least</label>
+            <label><input type="radio" name="target_type" value="AT_MOST" {{if eq .Habit.TargetType "AT_MOST"}}checked{{end}}> At most</label>
+        </fieldset>
+    </div>
+
+    <fieldset class="frequency-picker">
+        <legend>Frequency</legend>
+        <div class="frequency-inputs">
+            <input type="number" min="1" name="freq_numerator" value="{{if .Habit.Freq.Numerator}}{{.Habit.Freq.Numerator}}{{else}}1{{end}}"> times per
+            <input type="number" min="1" name="freq_denominator" value="{{if .Habit.Freq.Denominator}}{{.Habit.Freq.Denominator}}{{else}}1{{end}}"> days
+        </div>
+        <p class="hint">Daily = 1 per 1. Weekly = 1 per 7. Three times a week = 3 per 7.</p>
+    </fieldset>
+
     <div class="form-actions">
         <button type="submit" class="btn btn-primary">{{if .IsEdit}}Save{{else}}Create{{end}}</button>
         <a href="/" class="btn">Cancel</a>

@@ -3,6 +3,7 @@ package web
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	"rhythms/internal/domain"
 	"rhythms/internal/store"
@@ -11,6 +12,11 @@ import (
 // fakeHabitRepo and fakeEntryRepo satisfy domain.HabitRepo/domain.EntryRepo
 // entirely in memory, so handler tests exercise real routing/rendering
 // against a fast, deterministic backend instead of a real SQLite file.
+
+var (
+	_ domain.HabitRepo = (*fakeHabitRepo)(nil)
+	_ domain.EntryRepo = (*fakeEntryRepo)(nil)
+)
 
 type fakeHabitRepo struct {
 	habits map[int64]domain.Habit
@@ -44,6 +50,12 @@ func (f *fakeHabitRepo) Create(ctx context.Context, h domain.Habit) (int64, erro
 	if h.Type == "" {
 		h.Type = domain.YesNo
 	}
+	if h.TargetType == "" {
+		h.TargetType = domain.AtLeast
+	}
+	if h.Freq == (domain.Frequency{}) {
+		h.Freq = domain.DailyFrequency()
+	}
 	h.ID = f.nextID
 	f.nextID++
 	f.habits[h.ID] = h
@@ -76,6 +88,18 @@ func (f *fakeHabitRepo) Delete(ctx context.Context, id int64) error {
 	return nil
 }
 
+func (f *fakeHabitRepo) Reorder(ctx context.Context, orderedIDs []int64) error {
+	for pos, id := range orderedIDs {
+		h, ok := f.habits[id]
+		if !ok {
+			return fmt.Errorf("habit %d: %w", id, store.ErrNotFound)
+		}
+		h.Position = pos
+		f.habits[id] = h
+	}
+	return nil
+}
+
 type entryKey struct {
 	habitID int64
 	date    string
@@ -87,6 +111,17 @@ type fakeEntryRepo struct {
 
 func newFakeEntryRepo() *fakeEntryRepo {
 	return &fakeEntryRepo{entries: map[entryKey]domain.Entry{}}
+}
+
+func (f *fakeEntryRepo) ListAll(ctx context.Context, habitID int64) ([]domain.Entry, error) {
+	var out []domain.Entry
+	for k, e := range f.entries {
+		if k.habitID == habitID {
+			out = append(out, e)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Date.Before(out[j].Date) })
+	return out, nil
 }
 
 func (f *fakeEntryRepo) ListRange(ctx context.Context, habitID int64, from, to domain.Date) ([]domain.Entry, error) {
@@ -104,7 +139,7 @@ func (f *fakeEntryRepo) Get(ctx context.Context, habitID int64, date domain.Date
 	return e, ok, nil
 }
 
-func (f *fakeEntryRepo) Upsert(ctx context.Context, e domain.Entry) error {
+func (f *fakeEntryRepo) Upsert(ctx context.Context, habitType domain.HabitType, e domain.Entry) error {
 	f.entries[entryKey{e.HabitID, e.Date.String()}] = e
 	return nil
 }

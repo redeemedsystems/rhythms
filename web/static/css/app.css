@@ -137,9 +137,10 @@ a { color: inherit; }
     cursor: pointer;
 }
 
-.history-square-1, .history-square-2 { background: var(--habit-color, #388e3c); border-color: transparent; }
+.history-square-1, .history-square-2, .history-square-complete { background: var(--habit-color, #388e3c); border-color: transparent; }
 .history-square-3 { border-style: dashed; }
 .history-square-today { outline: 2px solid var(--muted); outline-offset: 1px; }
+.history-square[disabled], span.history-square { cursor: default; }
 
 .habit-actions {
     flex: 0 0 auto;
@@ -191,6 +192,83 @@ fieldset.color-picker {
 .color-swatch:has(input:checked) { border-color: var(--fg); }
 .color-swatch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
 
+.type-picker, .frequency-picker, .numeric-fields fieldset {
+    border: none;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.type-picker legend, .frequency-picker legend, .numeric-fields legend { font-size: 0.9rem; margin-bottom: 0.25rem; width: 100%; }
+
+.type-picker label, .frequency-picker label, .numeric-fields fieldset label {
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.9rem;
+}
+
+.numeric-fields { display: flex; flex-direction: column; gap: 0.9rem; }
+
+/* Numeric-only fields (unit/target) are irrelevant for Yes/No habits. */
+form:not(:has(input[name="type"][value="NUMERICAL"]:checked)) .numeric-fields {
+    display: none;
+}
+
+.frequency-inputs { display: flex; align-items: center; gap: 0.5rem; }
+.frequency-inputs input[type="number"] { width: 4rem; }
+
+input[type="number"] {
+    padding: 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--fg);
+    font: inherit;
+}
+
 .form-actions { display: flex; gap: 0.75rem; }
 
 .form-error { color: var(--danger); font-size: 0.9rem; }
+
+.habit-meta {
+    display: flex;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--muted);
+}
+
+.streak-badge, .score-badge {
+    white-space: nowrap;
+}
+
+.numeric-value {
+    flex: 0 0 auto;
+    min-width: 3rem;
+    text-align: center;
+    padding: 0.3rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+.numeric-value-complete { border-color: var(--habit-color, #388e3c); color: var(--habit-color, #388e3c); font-weight: 600; }
+
+.numeric-entry-form { display: flex; flex-direction: row; align-items: center; gap: 0.4rem; }
+.numeric-entry-form input[type="number"] { width: 5rem; padding: 0.3rem; }
+
+.drag-handle {
+    flex: 0 0 auto;
+    cursor: grab;
+    color: var(--muted);
+    padding: 0 0.25rem;
+    touch-action: none;
+}
+
+.habit-row.dragging { opacity: 0.5; }
+.habit-row-sortable-ghost { background: var(--border); }

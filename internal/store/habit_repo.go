@@ -121,6 +121,21 @@ func (r *HabitRepo) Delete(ctx context.Context, id int64) error {
 	return requireRowAffected(res, id)
 }
 
+func (r *HabitRepo) Reorder(ctx context.Context, orderedIDs []int64) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin reorder tx: %w", err)
+	}
+	defer tx.Rollback()
+
+	for pos, id := range orderedIDs {
+		if _, err := tx.ExecContext(ctx, `UPDATE habits SET position = ? WHERE id = ?`, pos, id); err != nil {
+			return fmt.Errorf("reorder habit %d to position %d: %w", id, pos, err)
+		}
+	}
+	return tx.Commit()
+}
+
 type rowScanner interface {
 	Scan(dest ...any) error
 }

@@ -1,13 +1,22 @@
 // Package config loads runtime configuration from environment variables.
 package config
 
-import "os"
+import (
+	"os"
+	"strconv"
+)
 
 type Config struct {
 	Addr          string
 	DBPath        string
 	BasicAuthUser string
 	BasicAuthPass string
+
+	// SkipEnabled gates whether the checkmark click-cycle can reach
+	// SKIP/UNKNOWN states, or only cycles between No/YesManual. A
+	// deployment-wide preference rather than per-habit, matching how
+	// uHabits itself exposes this as a single app-level setting.
+	SkipEnabled bool
 }
 
 func Load() Config {
@@ -16,6 +25,7 @@ func Load() Config {
 		DBPath:        envOr("RHYTHMS_DB_PATH", "rhythms.db"),
 		BasicAuthUser: os.Getenv("RHYTHMS_BASIC_AUTH_USER"),
 		BasicAuthPass: os.Getenv("RHYTHMS_BASIC_AUTH_PASS"),
+		SkipEnabled:   envBoolOr("RHYTHMS_SKIP_ENABLED", true),
 	}
 }
 
@@ -30,4 +40,16 @@ func envOr(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+func envBoolOr(key string, fallback bool) bool {
+	v, ok := os.LookupEnv(key)
+	if !ok {
+		return fallback
+	}
+	b, err := strconv.ParseBool(v)
+	if err != nil {
+		return fallback
+	}
+	return b
 }

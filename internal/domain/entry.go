@@ -21,12 +21,13 @@ type Entry struct {
 }
 
 // NextToggleValue implements the checkmark button's click-cycle:
-// YesAuto -> YesManual -> (Skip if enabled, else No) -> No -> (Unknown if
-// enabled, else YesManual). skipEnabled is a per-deployment preference; M1
-// hardcodes it to false (Skip/Unknown land in M2).
+// No -> YesManual -> (Skip -> Unknown ->) No. The first tap on an untouched
+// day must land on YesManual — that's the overwhelmingly common case (mark
+// today done) — with Skip/Unknown reachable on further taps only when
+// skipEnabled is on; otherwise it's a plain two-state No/YesManual toggle.
 func NextToggleValue(current EntryValue, skipEnabled bool) EntryValue {
 	switch current {
-	case YesAuto:
+	case No:
 		return YesManual
 	case YesManual:
 		if skipEnabled {
@@ -34,24 +35,28 @@ func NextToggleValue(current EntryValue, skipEnabled bool) EntryValue {
 		}
 		return No
 	case Skip:
-		return No
-	case No:
 		if skipEnabled {
 			return Unknown
 		}
-		return YesManual
-	default: // Unknown, or the zero value when no entry exists yet
+		return No
+	case Unknown:
+		return No
+	default: // YesAuto: tapping an auto-filled day confirms it explicitly
 		return YesManual
 	}
 }
 
 // IsCompleted reports whether an entry counts toward a streak, per the
-// habit's type and target.
+// habit's type and target. Ported from uHabits' StreakList.recompute filter.
 func IsCompleted(h Habit, e Entry) bool {
 	switch h.Type {
 	case Numerical:
 		if h.TargetType == AtMost {
-			return e.NumericValue <= h.TargetValue
+			// A day with no recorded value at all (Unknown) must not count
+			// as "at or under budget" — without this guard, an AT_MOST
+			// habit with target 0 would treat every untouched day as a
+			// perfect success, per uHabits' own explicit Unknown exclusion.
+			return e.Value != Unknown && e.NumericValue <= h.TargetValue
 		}
 		return e.NumericValue >= h.TargetValue
 	default:

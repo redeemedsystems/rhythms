@@ -115,38 +115,52 @@ func (s *Server) handleHabitUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Load the existing habit first: the form only exposes
-	// name/question/description/color, so type/target/frequency must carry
-	// over unchanged rather than being zeroed out (Update writes every
-	// column, and an empty habit_type/target_type would violate the
-	// table's CHECK constraint).
-	existing, err := s.habits.Get(r.Context(), id)
-	if errors.Is(err, store.ErrNotFound) {
+	if _, err := s.habits.Get(r.Context(), id); errors.Is(err, store.ErrNotFound) {
 		http.NotFound(w, r)
 		return
-	}
-	if err != nil {
+	} else if err != nil {
 		s.serverError(w, err)
 		return
 	}
 
-	formHabit, formErr := parseHabitForm(r)
+	h, formErr := parseHabitForm(r)
+	h.ID = id
 	if formErr != "" {
-		existing.Name, existing.Question, existing.Description = formHabit.Name, formHabit.Question, formHabit.Description
-		s.renderPartial(w, "page_habit_form", habitFormVM{IsEdit: true, Habit: existing, Palette: domain.Palette[:], Error: formErr})
+		// This response replaces the <form> itself via hx-swap="outerHTML",
+		// so it must be the bare form partial, not a full layout-wrapped page.
+		s.renderPartial(w, "page_habit_form", habitFormVM{IsEdit: true, Habit: h, Palette: domain.Palette[:], Error: formErr})
 		return
 	}
 
-	existing.Name = formHabit.Name
-	existing.Question = formHabit.Question
-	existing.Description = formHabit.Description
-	existing.Color = formHabit.Color
-
-	if err := s.habits.Update(r.Context(), existing); err != nil {
+	if err := s.habits.Update(r.Context(), h); err != nil {
 		s.serverError(w, err)
 		return
 	}
 	w.Header().Set("HX-Redirect", "/")
+	w.WriteHeader(http.StatusOK)
+}
+
+// handleHabitReorder persists a new drag-and-drop order: the client posts
+// the full list of habit ids as repeated "id" fields, in their new order.
+func (s *Server) handleHabitReorder(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "could not parse form", http.StatusBadRequest)
+		return
+	}
+	idStrs := r.PostForm["id"]
+	ids := make([]int64, 0, len(idStrs))
+	for _, s := range idStrs {
+		id, err := strconv.ParseInt(s, 10, 64)
+		if err != nil {
+			http.Error(w, "invalid id", http.StatusBadRequest)
+			return
+		}
+		ids = append(ids, id)
+	}
+	if err := s.habits.Reorder(r.Context(), ids); err != nil {
+		s.serverError(w, err)
+		return
+	}
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -192,20 +206,20 @@ func parseIDParam(r *http.Request) (int64, error) {
 	return strconv.ParseInt(r.PathValue("id"), 10, 64)
 }
 
-// parseHabitForm reads and validates the add/edit habit form. On success it
-// returns a Habit with formErr == "". Type/target fields are left at their
-// zero values here — HabitRepo.Create fills in the YES_NO/daily defaults;
-// Update preserves whatever the stored habit already had by only touching
-// the fields this form actually exposes (name/question/description/color).
+// parseHabitForm reads and validates the add/edit habit form, returning a
+// fully-populated Habit (formErr == "" on success) covering every field the
+// form exposes: name/question/description/color, type, and — depending on
+// type — either the numeric target fields or the frequency ratio.
 func parseHabitForm(r *http.Request) (domain.Habit, string) {
 	if err := r.ParseForm(); err != nil {
 		return domain.Habit{}, "could not parse form"
 	}
 
 	name := strings.TrimSpace(r.PostForm.Get("name"))
-	if name == "" {
-		return domain.Habit{Question: r.PostForm.Get("question"), Description: r.PostForm.Get("description")},
-			"Name is required."
+
+	habitType := domain.YesNo
+	if r.PostForm.Get("type") == string(domain.Numerical) {
+		habitType = domain.Numerical
 	}
 
 	color, err := strconv.Atoi(r.PostForm.Get("color"))
@@ -213,10 +227,39 @@ func parseHabitForm(r *http.Request) (domain.Habit, string) {
 		color = 0
 	}
 
-	return domain.Habit{
+	targetType := domain.AtLeast
+	if r.PostForm.Get("target_type") == string(domain.AtMost) {
+		targetType = domain.AtMost
+	}
+	targetValue, _ := strconv.ParseFloat(r.PostForm.Get("target_value"), 64)
+
+	numerator, errNum := strconv.Atoi(r.PostForm.Get("freq_numerator"))
+	if errNum != nil || numerator < 1 {
+		numerator = 1
+	}
+	denominator, errDen := strconv.Atoi(r.PostForm.Get("freq_denominator"))
+	if errDen != nil || denominator < 1 {
+		denominator = 1
+	}
+
+	h := domain.Habit{
 		Name:        name,
 		Question:    strings.TrimSpace(r.PostForm.Get("question")),
 		Description: strings.TrimSpace(r.PostForm.Get("description")),
 		Color:       color,
-	}, ""
+		Type:        habitType,
+		Unit:        strings.TrimSpace(r.PostForm.Get("unit")),
+		TargetValue: targetValue,
+		TargetType:  targetType,
+		Freq:        domain.NewFrequency(numerator, denominator),
+	}
+
+	if name == "" {
+		return h, "Name is required."
+	}
+	if numerator > denominator {
+		return h, "Frequency can't require more than once per day — times must be at most days."
+	}
+
+	return h, ""
 }
