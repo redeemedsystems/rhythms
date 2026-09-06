@@ -15,13 +15,14 @@ import (
 
 func newTestServer(t *testing.T) (*Server, *fakeHabitRepo, *fakeEntryRepo) {
 	t.Helper()
-	tmpl, err := template.ParseFS(webassets.TemplatesFS, "templates/*.html", "templates/pages/*.html", "templates/partials/*.html")
+	tmpl, err := template.New("").Funcs(templateFuncs).ParseFS(webassets.TemplatesFS, "templates/*.html", "templates/pages/*.html", "templates/partials/*.html")
 	if err != nil {
 		t.Fatalf("parse templates: %v", err)
 	}
 	habits := newFakeHabitRepo()
 	entries := newFakeEntryRepo()
-	return &Server{cfg: config.Config{}, habits: habits, entries: entries, tmpl: tmpl}, habits, entries
+	reminders := newFakeReminderRepo()
+	return &Server{cfg: config.Config{}, habits: habits, entries: entries, reminders: reminders, tmpl: tmpl}, habits, entries
 }
 
 func doRequest(t *testing.T, s *Server, method, target string, body string) *httptest.ResponseRecorder {

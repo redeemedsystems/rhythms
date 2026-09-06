@@ -14,6 +14,7 @@ type numericEntryFormVM struct {
 	Date    string
 	Unit    string
 	Value   float64
+	From    string // "today" when opened from the /today checklist, "" otherwise
 }
 
 // handleEntryEditForm renders the inline numeric-entry mini-form (a number
@@ -52,6 +53,7 @@ func (s *Server) handleEntryEditForm(w http.ResponseWriter, r *http.Request) {
 	}
 	s.renderPartial(w, "numeric_entry_form", numericEntryFormVM{
 		HabitID: id, Date: date.String(), Unit: h.Unit, Value: entry.NumericValue,
+		From: r.URL.Query().Get("from"),
 	})
 }
 
@@ -110,6 +112,17 @@ func (s *Server) handleEntryToggle(w http.ResponseWriter, r *http.Request) {
 	vm, err := s.buildHabitVM(r.Context(), h)
 	if err != nil {
 		s.serverError(w, err)
+		return
+	}
+
+	// The /today checklist posts with ?from=today so a now-completed item
+	// disappears (empty response removes it via hx-swap="outerHTML")
+	// instead of re-rendering the full list row, which /today doesn't show.
+	if r.URL.Query().Get("from") == "today" {
+		if vm.TodayCompleted {
+			return
+		}
+		s.renderPartial(w, "today_item", vm)
 		return
 	}
 	s.renderPartial(w, "habit_row", vm)

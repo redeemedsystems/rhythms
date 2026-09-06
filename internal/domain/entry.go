@@ -1,5 +1,7 @@
 package domain
 
+import "strconv"
+
 // EntryValue is the state of a boolean habit's entry for one day. Numeric
 // habits ignore this field and use NumericValue instead.
 type EntryValue int
@@ -61,5 +63,28 @@ func IsCompleted(h Habit, e Entry) bool {
 		return e.NumericValue >= h.TargetValue
 	default:
 		return e.Value > No
+	}
+}
+
+// FormattedValue is the raw stored value's CSV representation, ported
+// verbatim from uHabits' Entry.formattedValue: the boolean sentinels get
+// their name, anything else (a numeric habit's fixed-point value) is just
+// its integer string. Numeric habits share this column's raw encoding with
+// boolean ones (see the store package's entry encoding), so the same
+// formatting function applies regardless of habit type.
+func FormattedValue(v EntryValue) string {
+	switch v {
+	case YesManual:
+		return "YES_MANUAL"
+	case YesAuto:
+		return "YES_AUTO"
+	case No:
+		return "NO"
+	case Skip:
+		return "SKIP"
+	case Unknown:
+		return "UNKNOWN"
+	default:
+		return strconv.Itoa(int(v))
 	}
 }

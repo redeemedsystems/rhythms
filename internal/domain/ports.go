@@ -37,3 +37,12 @@ type EntryRepo interface {
 	// column per habit type (see the rewrite plan's deviation #6).
 	Upsert(ctx context.Context, habitType HabitType, e Entry) error
 }
+
+// ReminderRepo manages the optional per-habit reminder row. A habit with no
+// reminder configured simply has no row — Get's second return distinguishes
+// that from a genuinely-zero hour/minute.
+type ReminderRepo interface {
+	Get(ctx context.Context, habitID int64) (Reminder, bool, error)
+	Set(ctx context.Context, r Reminder) error
+	Delete(ctx context.Context, habitID int64) error
+}

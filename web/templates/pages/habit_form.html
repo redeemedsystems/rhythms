@@ -67,6 +67,29 @@
         <p class="hint">Daily = 1 per 1. Weekly = 1 per 7. Three times a week = 3 per 7.</p>
     </fieldset>
 
+    <fieldset class="reminder-picker">
+        <legend>
+            <label>
+                <input type="checkbox" name="reminder_enabled" {{if .ReminderEnabled}}checked{{end}}>
+                Remind me
+            </label>
+        </legend>
+        <div class="reminder-fields">
+            <input type="time" name="reminder_time" value="{{printf "%02d:%02d" .Reminder.Hour .Reminder.Minute}}">
+            <div class="weekday-checkboxes">
+                {{$mask := .Reminder.WeekdayMask}}
+                <label class="weekday-checkbox"><input type="checkbox" name="reminder_weekday" value="0" {{if hasWeekdayBit $mask 0}}checked{{end}}> Mon</label>
+                <label class="weekday-checkbox"><input type="checkbox" name="reminder_weekday" value="1" {{if hasWeekdayBit $mask 1}}checked{{end}}> Tue</label>
+                <label class="weekday-checkbox"><input type="checkbox" name="reminder_weekday" value="2" {{if hasWeekdayBit $mask 2}}checked{{end}}> Wed</label>
+                <label class="weekday-checkbox"><input type="checkbox" name="reminder_weekday" value="3" {{if hasWeekdayBit $mask 3}}checked{{end}}> Thu</label>
+                <label class="weekday-checkbox"><input type="checkbox" name="reminder_weekday" value="4" {{if hasWeekdayBit $mask 4}}checked{{end}}> Fri</label>
+                <label class="weekday-checkbox"><input type="checkbox" name="reminder_weekday" value="5" {{if hasWeekdayBit $mask 5}}checked{{end}}> Sat</label>
+                <label class="weekday-checkbox"><input type="checkbox" name="reminder_weekday" value="6" {{if hasWeekdayBit $mask 6}}checked{{end}}> Sun</label>
+            </div>
+        </div>
+        <p class="hint">Reminders don't send anything yet (that lands in a later milestone) — this just saves the preference.</p>
+    </fieldset>
+
     <div class="form-actions">
         <button type="submit" class="btn btn-primary">{{if .IsEdit}}Save{{else}}Create{{end}}</button>
         <a href="/" class="btn">Cancel</a>

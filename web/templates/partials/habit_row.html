@@ -66,7 +66,7 @@
 {{define "numeric_entry_form"}}
 <form
     class="numeric-entry-form"
-    hx-post="/habits/{{.HabitID}}/entries/{{.Date}}"
+    hx-post="/habits/{{.HabitID}}/entries/{{.Date}}{{if .From}}?from={{.From}}{{end}}"
     hx-target="#habit-{{.HabitID}}"
     hx-swap="outerHTML"
 >

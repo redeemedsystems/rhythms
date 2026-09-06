@@ -63,14 +63,19 @@ func (s *Server) buildHabitListVM(r *http.Request, showArchived bool) (habitList
 }
 
 type habitFormVM struct {
-	IsEdit  bool
-	Habit   domain.Habit
-	Palette []string
-	Error   string
+	IsEdit          bool
+	Habit           domain.Habit
+	Palette         []string
+	Error           string
+	ReminderEnabled bool
+	Reminder        domain.Reminder
 }
 
 func (s *Server) handleHabitNewForm(w http.ResponseWriter, r *http.Request) {
-	s.render(w, "page_habit_form", habitFormVM{Palette: domain.Palette[:]})
+	s.render(w, "page_habit_form", habitFormVM{
+		Palette:  domain.Palette[:],
+		Reminder: domain.Reminder{Hour: 8, WeekdayMask: domain.AllWeekdaysMask},
+	})
 }
 
 func (s *Server) handleHabitEditForm(w http.ResponseWriter, r *http.Request) {
@@ -88,7 +93,17 @@ func (s *Server) handleHabitEditForm(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, err)
 		return
 	}
-	s.render(w, "page_habit_form", habitFormVM{IsEdit: true, Habit: h, Palette: domain.Palette[:]})
+
+	rem, ok, err := s.reminders.Get(r.Context(), id)
+	if err != nil {
+		s.serverError(w, err)
+		return
+	}
+	if !ok {
+		rem = domain.Reminder{Hour: 8, WeekdayMask: domain.AllWeekdaysMask}
+	}
+
+	s.render(w, "page_habit_form", habitFormVM{IsEdit: true, Habit: h, Palette: domain.Palette[:], ReminderEnabled: ok, Reminder: rem})
 }
 
 func (s *Server) handleHabitCreate(w http.ResponseWriter, r *http.Request) {
@@ -100,7 +115,12 @@ func (s *Server) handleHabitCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if _, err := s.habits.Create(r.Context(), h); err != nil {
+	id, err := s.habits.Create(r.Context(), h)
+	if err != nil {
+		s.serverError(w, err)
+		return
+	}
+	if err := s.saveReminderForm(r, id); err != nil {
 		s.serverError(w, err)
 		return
 	}
@@ -133,6 +153,10 @@ func (s *Server) handleHabitUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := s.habits.Update(r.Context(), h); err != nil {
+		s.serverError(w, err)
+		return
+	}
+	if err := s.saveReminderForm(r, id); err != nil {
 		s.serverError(w, err)
 		return
 	}
@@ -262,4 +286,42 @@ func parseHabitForm(r *http.Request) (domain.Habit, string) {
 	}
 
 	return h, ""
+}
+
+// saveReminderForm reads the reminder fields from the same submitted form
+// parseHabitForm already parsed (r.PostForm is populated by then) and
+// persists or clears the habit's reminder accordingly.
+func (s *Server) saveReminderForm(r *http.Request, habitID int64) error {
+	if r.PostForm.Get("reminder_enabled") != "on" {
+		return s.reminders.Delete(r.Context(), habitID)
+	}
+
+	hour, minute := parseHHMM(r.PostForm.Get("reminder_time"))
+	mask := 0
+	for _, v := range r.PostForm["reminder_weekday"] {
+		if bit, err := strconv.Atoi(v); err == nil && bit >= 0 && bit < 7 {
+			mask |= 1 << bit
+		}
+	}
+	if mask == 0 {
+		mask = domain.AllWeekdaysMask
+	}
+
+	return s.reminders.Set(r.Context(), domain.Reminder{HabitID: habitID, Hour: hour, Minute: minute, WeekdayMask: mask})
+}
+
+// parseHHMM parses an <input type="time"> value ("HH:MM"), defaulting to
+// 08:00 if missing or malformed.
+func parseHHMM(s string) (hour, minute int) {
+	hour, minute = 8, 0
+	parts := strings.SplitN(s, ":", 2)
+	if len(parts) != 2 {
+		return hour, minute
+	}
+	h, errH := strconv.Atoi(parts[0])
+	m, errM := strconv.Atoi(parts[1])
+	if errH != nil || errM != nil || h < 0 || h > 23 || m < 0 || m > 59 {
+		return 8, 0
+	}
+	return h, m
 }

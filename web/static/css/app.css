@@ -314,3 +314,45 @@ input[type="number"] {
 
 .chart { display: block; max-width: 100%; height: auto; color: var(--fg); }
 .chart-heatmap { height: auto; max-width: none; }
+
+.reminder-picker {
+    border: none;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.reminder-picker legend { font-size: 0.9rem; }
+.reminder-picker legend label { flex-direction: row; align-items: center; gap: 0.4rem; }
+
+.reminder-fields { display: flex; flex-direction: column; gap: 0.6rem; }
+
+form:not(:has(input[name="reminder_enabled"]:checked)) .reminder-fields {
+    display: none;
+}
+
+.reminder-fields input[type="time"] {
+    padding: 0.4rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--fg);
+    font: inherit;
+    align-self: flex-start;
+}
+
+.weekday-checkboxes { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+
+.weekday-checkbox {
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.85rem;
+}
+
+.today-page .habit-list { margin-top: 0.5rem; }
+.today-empty { color: var(--muted); text-align: center; padding: 2rem 0; }
+.today-item .habit-name { text-decoration: none; }
+.today-item .streak-badge { flex: 0 0 auto; font-size: 0.8rem; color: var(--muted); }

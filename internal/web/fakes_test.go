@@ -14,8 +14,9 @@ import (
 // against a fast, deterministic backend instead of a real SQLite file.
 
 var (
-	_ domain.HabitRepo = (*fakeHabitRepo)(nil)
-	_ domain.EntryRepo = (*fakeEntryRepo)(nil)
+	_ domain.HabitRepo    = (*fakeHabitRepo)(nil)
+	_ domain.EntryRepo    = (*fakeEntryRepo)(nil)
+	_ domain.ReminderRepo = (*fakeReminderRepo)(nil)
 )
 
 type fakeHabitRepo struct {
@@ -141,5 +142,28 @@ func (f *fakeEntryRepo) Get(ctx context.Context, habitID int64, date domain.Date
 
 func (f *fakeEntryRepo) Upsert(ctx context.Context, habitType domain.HabitType, e domain.Entry) error {
 	f.entries[entryKey{e.HabitID, e.Date.String()}] = e
+	return nil
+}
+
+type fakeReminderRepo struct {
+	reminders map[int64]domain.Reminder
+}
+
+func newFakeReminderRepo() *fakeReminderRepo {
+	return &fakeReminderRepo{reminders: map[int64]domain.Reminder{}}
+}
+
+func (f *fakeReminderRepo) Get(ctx context.Context, habitID int64) (domain.Reminder, bool, error) {
+	r, ok := f.reminders[habitID]
+	return r, ok, nil
+}
+
+func (f *fakeReminderRepo) Set(ctx context.Context, r domain.Reminder) error {
+	f.reminders[r.HabitID] = r
+	return nil
+}
+
+func (f *fakeReminderRepo) Delete(ctx context.Context, habitID int64) error {
+	delete(f.reminders, habitID)
 	return nil
 }

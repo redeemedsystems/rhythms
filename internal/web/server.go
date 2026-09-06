@@ -15,22 +15,32 @@ import (
 )
 
 type Server struct {
-	cfg     config.Config
-	habits  domain.HabitRepo
-	entries domain.EntryRepo
-	tmpl    *template.Template
+	cfg       config.Config
+	db        *sql.DB
+	habits    domain.HabitRepo
+	entries   domain.EntryRepo
+	reminders domain.ReminderRepo
+	tmpl      *template.Template
+}
+
+var templateFuncs = template.FuncMap{
+	// hasWeekdayBit reports whether bit is set in a Reminder.WeekdayMask —
+	// used to pre-check the right weekday checkboxes when editing.
+	"hasWeekdayBit": func(mask, bit int) bool { return mask&(1<<bit) != 0 },
 }
 
 func NewServer(cfg config.Config, db *sql.DB) (*Server, error) {
-	tmpl, err := template.ParseFS(webassets.TemplatesFS, "templates/*.html", "templates/pages/*.html", "templates/partials/*.html")
+	tmpl, err := template.New("").Funcs(templateFuncs).ParseFS(webassets.TemplatesFS, "templates/*.html", "templates/pages/*.html", "templates/partials/*.html")
 	if err != nil {
 		return nil, err
 	}
 	return &Server{
-		cfg:     cfg,
-		habits:  store.NewHabitRepo(db),
-		entries: store.NewEntryRepo(db),
-		tmpl:    tmpl,
+		cfg:       cfg,
+		db:        db,
+		habits:    store.NewHabitRepo(db),
+		entries:   store.NewEntryRepo(db),
+		reminders: store.NewReminderRepo(db),
+		tmpl:      tmpl,
 	}, nil
 }
 
@@ -39,8 +49,11 @@ func (s *Server) Routes() http.Handler {
 
 	mux.HandleFunc("GET /healthz", s.handleHealthz)
 	mux.HandleFunc("GET /{$}", s.handleIndex)
+	mux.HandleFunc("GET /today", s.handleToday)
+	mux.HandleFunc("GET /backup", s.handleBackup)
 
 	mux.HandleFunc("GET /habits/new", s.handleHabitNewForm)
+	mux.HandleFunc("GET /habits/{id}/export.csv", s.handleHabitExportCSV)
 	mux.HandleFunc("POST /habits", s.handleHabitCreate)
 	mux.HandleFunc("GET /habits/{id}", s.handleHabitDetail)
 	mux.HandleFunc("GET /habits/{id}/edit", s.handleHabitEditForm)

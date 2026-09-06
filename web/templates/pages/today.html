@@ -1,0 +1,16 @@
+{{define "page_today"}}
+<div class="page-header">
+    <h1>Today</h1>
+    <a href="/" class="btn">All habits</a>
+</div>
+
+<div class="today-page">
+    {{if not .Items}}
+        <p class="today-empty">Nothing left for today &mdash; nice work.</p>
+    {{else}}
+        <ul class="habit-list">
+            {{range .Items}}{{template "today_item" .}}{{end}}
+        </ul>
+    {{end}}
+</div>
+{{end}}
