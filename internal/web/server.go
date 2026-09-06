@@ -72,6 +72,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /habits/{id}/export.csv", s.handleHabitExportCSV)
 	mux.HandleFunc("POST /habits", s.handleHabitCreate)
 	mux.HandleFunc("GET /habits/{id}", s.handleHabitDetail)
+	mux.HandleFunc("GET /habits/{id}/calendar", s.handleHabitCalendar)
 	mux.HandleFunc("GET /habits/{id}/edit", s.handleHabitEditForm)
 	mux.HandleFunc("POST /habits/{id}", s.handleHabitUpdate)
 	mux.HandleFunc("POST /habits/{id}/archive", s.handleHabitArchiveToggle)

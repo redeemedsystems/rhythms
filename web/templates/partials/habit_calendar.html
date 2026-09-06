@@ -1,0 +1,65 @@
+{{define "habit_calendar"}}
+{{$root := .}}
+<div id="habit-calendar" class="calendar" style="--habit-color: {{.Color}}">
+    <div class="calendar-nav">
+        <button
+            type="button"
+            class="btn"
+            hx-get="/habits/{{.HabitID}}/calendar?month={{.PrevMonth}}"
+            hx-target="#habit-calendar"
+            hx-swap="innerHTML"
+        >&larr;</button>
+        <span class="calendar-month-label">{{.MonthLabel}}</span>
+        <button
+            type="button"
+            class="btn"
+            hx-get="/habits/{{.HabitID}}/calendar?month={{.NextMonth}}"
+            hx-target="#habit-calendar"
+            hx-swap="innerHTML"
+        >&rarr;</button>
+    </div>
+
+    <div class="calendar-grid">
+        <span class="calendar-weekday-label">Sun</span>
+        <span class="calendar-weekday-label">Mon</span>
+        <span class="calendar-weekday-label">Tue</span>
+        <span class="calendar-weekday-label">Wed</span>
+        <span class="calendar-weekday-label">Thu</span>
+        <span class="calendar-weekday-label">Fri</span>
+        <span class="calendar-weekday-label">Sat</span>
+
+        {{range .Weeks}}
+            {{range .}}
+                {{if eq .Day 0}}
+                    <div class="calendar-day calendar-day-blank"></div>
+                {{else if .IsFuture}}
+                    <div class="calendar-day calendar-day-future">
+                        <span class="calendar-day-number">{{.Day}}</span>
+                    </div>
+                {{else if $root.IsNumerical}}
+                    <button
+                        type="button"
+                        class="calendar-day{{if .Completed}} calendar-day-complete{{end}}{{if .IsToday}} calendar-day-today{{end}}"
+                        hx-get="/habits/{{$root.HabitID}}/entries/{{.Date}}?from=calendar&month={{$root.MonthParam}}"
+                        hx-target="this"
+                        hx-swap="outerHTML"
+                    >
+                        <span class="calendar-day-number">{{.Day}}</span>
+                        {{if .NumericValue}}<span class="calendar-day-value">{{.NumericValue}}</span>{{end}}
+                    </button>
+                {{else}}
+                    <button
+                        type="button"
+                        class="calendar-day{{if .Completed}} calendar-day-complete{{end}}{{if .IsToday}} calendar-day-today{{end}}"
+                        hx-post="/habits/{{$root.HabitID}}/entries/{{.Date}}?from=calendar&month={{$root.MonthParam}}"
+                        hx-target="#habit-calendar"
+                        hx-swap="innerHTML"
+                    >
+                        <span class="calendar-day-number">{{.Day}}</span>
+                    </button>
+                {{end}}
+            {{end}}
+        {{end}}
+    </div>
+</div>
+{{end}}

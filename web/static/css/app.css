@@ -367,3 +367,82 @@ form:not(:has(input[name="reminder_enabled"]:checked)) .reminder-fields {
 .today-empty { color: var(--muted); text-align: center; padding: 2rem 0; }
 .today-item .habit-name { text-decoration: none; }
 .today-item .streak-badge { flex: 0 0 auto; font-size: 0.8rem; color: var(--muted); }
+
+.calendar { max-width: 100%; }
+
+.calendar-nav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.calendar-month-label { font-weight: 600; min-width: 10rem; text-align: center; }
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(2.25rem, 1fr));
+    gap: 3px;
+}
+
+.calendar-weekday-label {
+    text-align: center;
+    font-size: 0.7rem;
+    color: var(--muted);
+    padding-bottom: 0.25rem;
+}
+
+.calendar-day {
+    aspect-ratio: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+    padding: 0.2rem;
+}
+
+.calendar-day-blank { visibility: hidden; }
+
+.calendar-day-future {
+    cursor: default;
+    color: var(--muted);
+    opacity: 0.5;
+}
+
+.calendar-day-number { font-size: 0.8rem; }
+
+.calendar-day-value { font-size: 0.65rem; color: var(--muted); }
+
+.calendar-day-complete {
+    background: var(--habit-color, #388e3c);
+    border-color: transparent;
+    color: #fff;
+}
+
+.calendar-day-complete .calendar-day-value { color: rgba(255, 255, 255, 0.85); }
+
+.calendar-day-today { outline: 2px solid var(--muted); outline-offset: 1px; }
+
+.calendar-grid form.numeric-entry-form {
+    grid-column: span 1;
+    flex-direction: column;
+    max-width: none;
+    gap: 0.2rem;
+    padding: 0.2rem;
+}
+
+.calendar-grid .numeric-entry-form input[type="number"] {
+    width: 100%;
+    padding: 0.15rem;
+    font-size: 0.75rem;
+}
+
+.calendar-grid .numeric-entry-form .btn-primary { font-size: 0.7rem; padding: 0.15rem 0.3rem; }

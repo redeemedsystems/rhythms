@@ -66,9 +66,9 @@
 {{define "numeric_entry_form"}}
 <form
     class="numeric-entry-form"
-    hx-post="/habits/{{.HabitID}}/entries/{{.Date}}{{if .From}}?from={{.From}}{{end}}"
-    hx-target="#habit-{{.HabitID}}"
-    hx-swap="outerHTML"
+    hx-post="/habits/{{.HabitID}}/entries/{{.Date}}{{.PostQuery}}"
+    hx-target="{{.TargetSelector}}"
+    hx-swap="{{.SwapMode}}"
 >
     <input type="number" step="any" name="value" value="{{.Value}}" autofocus>
     {{if .Unit}}<span>{{.Unit}}</span>{{end}}

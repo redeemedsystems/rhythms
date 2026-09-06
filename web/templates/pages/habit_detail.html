@@ -23,6 +23,11 @@
 </div>
 
 <section class="detail-section">
+    <h2>Calendar</h2>
+    {{template "habit_calendar" .Calendar}}
+</section>
+
+<section class="detail-section">
     <h2>Score</h2>
     <div class="chart-container">{{.ScoreChart}}</div>
 </section>

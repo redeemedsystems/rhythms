@@ -60,3 +60,8 @@ func (d Date) IsLastDayOfMonth() bool {
 
 // IsZero reports whether d is the zero Date (never explicitly set).
 func (d Date) IsZero() bool { return d.t.IsZero() }
+
+// StartOfMonth returns the first day of d's calendar month.
+func (d Date) StartOfMonth() Date {
+	return NewDate(d.t.Year(), d.t.Month(), 1)
+}

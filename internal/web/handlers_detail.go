@@ -27,6 +27,8 @@ type habitDetailVM struct {
 	StreakChart  template.HTML
 	HeatmapChart template.HTML
 	WeekdayChart template.HTML
+
+	Calendar calendarVM
 }
 
 // handleHabitDetail renders the habit detail page: score/streak/weekday
@@ -96,6 +98,13 @@ func (s *Server) handleHabitDetail(w http.ResponseWriter, r *http.Request) {
 	if len(scoreSeries) > 0 {
 		vm.ScorePercent = int(scoreSeries[len(scoreSeries)-1].Value*100 + 0.5)
 	}
+
+	calVM, err := s.buildCalendarVM(r.Context(), h, today.StartOfMonth())
+	if err != nil {
+		s.serverError(w, err)
+		return
+	}
+	vm.Calendar = calVM
 
 	s.render(w, "page_habit_detail", vm)
 }
