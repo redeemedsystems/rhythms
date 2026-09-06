@@ -65,8 +65,19 @@
         const btn = document.getElementById('push-toggle');
         if (!btn) return; // only present on /today
 
-        const registration = await registerServiceWorker();
-        await updateButton(btn, registration);
+        let registration = null;
+        try {
+            registration = await registerServiceWorker();
+            await updateButton(btn, registration);
+        } catch (e) {
+            // Whatever the cause (a stale service worker from a previous
+            // deploy is one real one we've hit), fail to a visibly hidden
+            // button rather than leaving it stuck in whatever state the
+            // bare HTML left it in with no explanation.
+            console.error('push notification setup failed', e);
+            btn.hidden = true;
+            return;
+        }
 
         btn.addEventListener('click', async function () {
             if (!registration) return;

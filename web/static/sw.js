@@ -2,6 +2,22 @@
 // push arrives, and focus (or open) the app when that notification is
 // tapped. Registered at root scope (see /sw.js in internal/web) so it can
 // control the whole app, not just /static/.
+//
+// skipWaiting()/clients.claim(): without these, a newly-deployed sw.js sits
+// "waiting" behind whatever service worker previously controlled this
+// origin until every open tab is fully closed and reopened — on a domain
+// that's had a *different* app's service worker before (as
+// rhythms.redeemed.systems did), that old worker stays in control
+// indefinitely, breaking push subscription state in ways that are hard to
+// diagnose from the page's own JS. Forcing immediate takeover on install
+// means a plain reload always gets the current worker.
+self.addEventListener('install', function (event) {
+    event.waitUntil(self.skipWaiting());
+});
+
+self.addEventListener('activate', function (event) {
+    event.waitUntil(clients.claim());
+});
 
 self.addEventListener('push', function (event) {
     let data = { title: 'Rhythms', body: 'A habit is due.', url: '/today' };

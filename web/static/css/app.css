@@ -58,6 +58,13 @@ a { color: inherit; }
     font-size: 0.9rem;
 }
 
+/* .btn's own display:inline-block otherwise beats the browser's default
+   [hidden]{display:none} (author styles always win over the UA
+   stylesheet, regardless of selector specificity), so a hidden .btn — e.g.
+   push-toggle before its JS decides whether to show it — renders as an
+   empty box instead of actually being hidden. */
+.btn[hidden] { display: none; }
+
 .btn-primary { border-color: #1976d2; color: #1976d2; }
 
 .btn-link {
