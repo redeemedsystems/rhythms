@@ -1,0 +1,24 @@
+{{define "dashboard_stats"}}
+<div class="range-toggle">
+  <a hx-get="/dashboard/partial?range=day" hx-target="#dashboard-stats" hx-swap="innerHTML"
+     class="{{if eq .Range "day"}}active{{end}}">Day</a>
+  <a hx-get="/dashboard/partial?range=week" hx-target="#dashboard-stats" hx-swap="innerHTML"
+     class="{{if eq .Range "week"}}active{{end}}">Week</a>
+  <a hx-get="/dashboard/partial?range=month" hx-target="#dashboard-stats" hx-swap="innerHTML"
+     class="{{if eq .Range "month"}}active{{end}}">Month</a>
+</div>
+
+{{if not .Stats}}
+  <div class="card"><p>No habits yet. <a href="/habits/new">Add one</a> to start tracking.</p></div>
+{{else}}
+  {{range .Stats}}
+  <div class="card">
+    <div class="name">{{.Habit.Name}}</div>
+    <div class="meta">
+      {{.CompletionPct}}% complete &middot; current streak {{.CurrentStreak}} &middot; best streak {{.BestStreak}}
+    </div>
+    <div class="chart">{{.ChartSVG}}</div>
+  </div>
+  {{end}}
+{{end}}
+{{end}}

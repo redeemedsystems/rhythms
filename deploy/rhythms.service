@@ -1,0 +1,25 @@
+[Unit]
+Description=Rhythms habit tracker
+After=network.target
+
+[Service]
+Type=simple
+User=rhythms
+Group=rhythms
+WorkingDirectory=/opt/rhythms
+ExecStart=/opt/rhythms/rhythms
+Restart=on-failure
+RestartSec=2
+
+Environment=RHYTHMS_ADDR=:8080
+Environment=RHYTHMS_DB=/opt/rhythms/data/rhythms.db
+Environment=RHYTHMS_SECURE_COOKIES=false
+Environment=RHYTHMS_VAPID_SUBSCRIBER=mailto:you@example.com
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/opt/rhythms/data
+
+[Install]
+WantedBy=multi-user.target

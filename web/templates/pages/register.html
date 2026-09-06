@@ -1,0 +1,21 @@
+{{define "content"}}
+<div class="card">
+  <h2>Create your account</h2>
+  <form method="post" action="/register" id="register-form">
+    <div class="field">
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" value="{{.Email}}" required autocomplete="email">
+    </div>
+    <div class="field">
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" required minlength="8" autocomplete="new-password">
+    </div>
+    <input type="hidden" name="timezone" id="timezone">
+    <button type="submit">Create account</button>
+  </form>
+  <p>Already have an account? <a href="/login">Log in</a></p>
+</div>
+<script>
+  document.getElementById("timezone").value = Intl.DateTimeFormat().resolvedOptions().timeZone;
+</script>
+{{end}}

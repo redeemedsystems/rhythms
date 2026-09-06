@@ -1,0 +1,11 @@
+{{define "content"}}
+<h2>Today</h2>
+{{if not .Habits}}
+  <div class="card">
+    <p>No habits yet.</p>
+    <a class="btn" href="/habits/new">Add your first rhythm</a>
+  </div>
+{{else}}
+  {{range .Habits}}{{template "habit_card" .}}{{end}}
+{{end}}
+{{end}}

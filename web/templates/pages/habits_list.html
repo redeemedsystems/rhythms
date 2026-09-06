@@ -1,0 +1,28 @@
+{{define "content"}}
+<h2>Your habits</h2>
+<p><a class="btn" href="/habits/new">+ New habit</a></p>
+
+{{if not .Habits}}
+  <div class="card"><p>No habits yet. Add one to get started.</p></div>
+{{else}}
+  {{$csrf := .CSRFToken}}
+  {{range .Habits}}
+  <div class="card habit-card">
+    <div>
+      <div class="name">{{.Name}}</div>
+      <div class="meta">
+        {{.Type}} &middot; {{.ScheduleKind}}
+        {{if .TargetCount.Valid}} &middot; target {{.TargetCount.Int64}}{{if .Unit.Valid}} {{.Unit.String}}{{end}}{{end}}
+      </div>
+    </div>
+    <div>
+      <a class="btn secondary" href="/habits/{{.ID}}/edit">Edit</a>
+      <form method="post" action="/habits/{{.ID}}/delete" style="display:inline">
+        <input type="hidden" name="csrf_token" value="{{$csrf}}">
+        <button class="btn danger" type="submit">Archive</button>
+      </form>
+    </div>
+  </div>
+  {{end}}
+{{end}}
+{{end}}

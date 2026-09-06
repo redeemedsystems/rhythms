@@ -1,0 +1,51 @@
+{{define "content"}}
+{{$h := .Habit}}
+<h2>{{if $h}}Edit habit{{else}}New habit{{end}}</h2>
+
+<form method="post" action="{{if $h}}/habits/{{$h.ID}}/edit{{else}}/habits/new{{end}}" class="card">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+
+  <div class="field">
+    <label for="name">Name</label>
+    <input type="text" id="name" name="name" value="{{if $h}}{{$h.Name}}{{end}}" required placeholder="e.g. Take vitamins">
+  </div>
+
+  <div class="field">
+    <label for="type">Type</label>
+    <select id="type" name="type">
+      <option value="boolean" {{if $h}}{{if eq $h.Type "boolean"}}selected{{end}}{{end}}>Yes/No (e.g. took vitamins)</option>
+      <option value="count" {{if $h}}{{if eq $h.Type "count"}}selected{{end}}{{end}}>Count (e.g. prayed 3 times)</option>
+      <option value="quantity" {{if $h}}{{if eq $h.Type "quantity"}}selected{{end}}{{end}}>Quantity (e.g. 8 cups of water)</option>
+    </select>
+  </div>
+
+  <div class="field">
+    <label for="target_count">Target count (for Count/Quantity types)</label>
+    <input type="number" id="target_count" name="target_count" min="1"
+           value="{{if $h}}{{if $h.TargetCount.Valid}}{{$h.TargetCount.Int64}}{{end}}{{end}}">
+  </div>
+
+  <div class="field">
+    <label for="unit">Unit (for Count/Quantity types)</label>
+    <input type="text" id="unit" name="unit" placeholder="times, cups, ..."
+           value="{{if $h}}{{$h.Unit.String}}{{end}}">
+  </div>
+
+  <div class="field">
+    <label for="schedule_kind">Schedule</label>
+    <select id="schedule_kind" name="schedule_kind">
+      <option value="daily" {{if $h}}{{if eq $h.ScheduleKind "daily"}}selected{{end}}{{end}}>Once daily</option>
+      <option value="times_per_day" {{if $h}}{{if eq $h.ScheduleKind "times_per_day"}}selected{{end}}{{end}}>Multiple times per day</option>
+      <option value="specific_times" {{if $h}}{{if eq $h.ScheduleKind "specific_times"}}selected{{end}}{{end}}>Specific reminder times</option>
+    </select>
+  </div>
+
+  <div class="field">
+    <label for="schedule_times">Reminder times (HH:MM, comma separated — only used for "Specific reminder times")</label>
+    <input type="text" id="schedule_times" name="schedule_times" placeholder="07:00, 12:00, 19:00"
+           value="{{if $h}}{{join $h.ScheduleTimes ", "}}{{end}}">
+  </div>
+
+  <button type="submit">{{if $h}}Save changes{{else}}Create habit{{end}}</button>
+</form>
+{{end}}

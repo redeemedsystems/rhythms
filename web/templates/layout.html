@@ -1,0 +1,41 @@
+{{define "layout"}}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#3d6b4f">
+  <meta name="csrf-token" content="{{.CSRFToken}}">
+  <title>Rhythms</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/static/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
+  <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+  {{if .LoggedIn}}
+  <header class="app-header">
+    <h1>Rhythms</h1>
+  </header>
+  {{end}}
+
+  <main class="container">
+    {{if .Flash}}<p class="error">{{.Flash}}</p>{{end}}
+    {{template "content" .}}
+  </main>
+
+  {{if .LoggedIn}}
+  <nav class="tabbar">
+    <a href="/today" class="{{if eq .Nav "today"}}active{{end}}">Today</a>
+    <a href="/habits" class="{{if eq .Nav "habits"}}active{{end}}">Habits</a>
+    <a href="/dashboard" class="{{if eq .Nav "dashboard"}}active{{end}}">Dashboard</a>
+  </nav>
+  {{end}}
+
+  <script src="/htmx/htmx.min.js"></script>
+  <script src="/static/js/app.js"></script>
+  <script src="/static/js/push.js"></script>
+  <script src="/static/js/sw-register.js"></script>
+</body>
+</html>
+{{end}}

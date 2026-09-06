@@ -1,0 +1,23 @@
+{{define "habit_card"}}
+<div class="card habit-card" id="habit-{{.ID}}">
+  <div>
+    <div class="name">{{.Name}}</div>
+    <div class="meta">
+      {{if eq .Type "boolean"}}
+        {{if .Complete}}Done today{{else}}Not logged yet{{end}}
+      {{else}}
+        {{.ProgressLabel}}
+      {{end}}
+      {{if gt .CurrentStreak 0}} &middot; <span class="streak-badge">{{.CurrentStreak}}-day streak</span>{{end}}
+    </div>
+  </div>
+  <button
+    class="{{if .Complete}}done{{end}}"
+    hx-post="/habits/{{.ID}}/log"
+    hx-target="#habit-{{.ID}}"
+    hx-swap="outerHTML"
+  >
+    {{if eq .Type "boolean"}}{{if .Complete}}Done{{else}}Mark done{{end}}{{else}}+1{{end}}
+  </button>
+</div>
+{{end}}
