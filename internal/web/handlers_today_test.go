@@ -26,6 +26,9 @@ func TestHandleTodayHidesCompletedHabits(t *testing.T) {
 	if !strings.Contains(body, "Still pending") {
 		t.Error("incomplete habit should appear on /today")
 	}
+	if !strings.Contains(body, domain.Today().Format("Monday, January 2")) {
+		t.Errorf("expected today's date in the page, got: %s", body)
+	}
 	_ = pendingID
 }
 

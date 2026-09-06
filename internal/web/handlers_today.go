@@ -1,8 +1,13 @@
 package web
 
-import "net/http"
+import (
+	"net/http"
+
+	"rhythms/internal/domain"
+)
 
 type todayPageVM struct {
+	Date  string
 	Items []habitVM
 }
 
@@ -30,5 +35,8 @@ func (s *Server) handleToday(w http.ResponseWriter, r *http.Request) {
 		items = append(items, vm)
 	}
 
-	s.render(w, "page_today", todayPageVM{Items: items})
+	s.render(w, "page_today", todayPageVM{
+		Date:  domain.Today().Format("Monday, January 2"),
+		Items: items,
+	})
 }

@@ -30,12 +30,13 @@ func ParseDate(s string) (Date, error) {
 	return Date{t}, nil
 }
 
-func (d Date) String() string        { return d.t.Format(dateLayout) }
-func (d Date) AddDays(n int) Date    { return Date{d.t.AddDate(0, 0, n)} }
-func (d Date) Before(o Date) bool    { return d.t.Before(o.t) }
-func (d Date) After(o Date) bool     { return d.t.After(o.t) }
-func (d Date) Equal(o Date) bool     { return d.t.Equal(o.t) }
-func (d Date) Weekday() time.Weekday { return d.t.Weekday() }
+func (d Date) String() string              { return d.t.Format(dateLayout) }
+func (d Date) Format(layout string) string { return d.t.Format(layout) }
+func (d Date) AddDays(n int) Date          { return Date{d.t.AddDate(0, 0, n)} }
+func (d Date) Before(o Date) bool          { return d.t.Before(o.t) }
+func (d Date) After(o Date) bool           { return d.t.After(o.t) }
+func (d Date) Equal(o Date) bool           { return d.t.Equal(o.t) }
+func (d Date) Weekday() time.Weekday       { return d.t.Weekday() }
 
 // DaysUntil returns the number of days from d to other: positive if other is
 // later, negative if other is earlier, zero if equal. Mirrors uHabits'

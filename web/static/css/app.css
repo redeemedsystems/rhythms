@@ -361,6 +361,7 @@ form:not(:has(input[name="reminder_enabled"]:checked)) .reminder-fields {
     font-size: 0.85rem;
 }
 
+.today-date { margin: 0.2rem 0 0; color: var(--muted); font-size: 0.9rem; }
 .push-toggle { margin-bottom: 1rem; }
 .today-page .habit-list { margin-top: 0.5rem; }
 .today-empty { color: var(--muted); text-align: center; padding: 2rem 0; }
