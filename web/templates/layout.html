@@ -1,3 +1,11 @@
+{{/*
+Pages don't nest via {{template "content" .}} because every page would then
+have to share the single template name "content", and html/template errors on
+redefinition when multiple files in one parse define the same name. Instead
+each page renders its own uniquely-named body template to a buffer in Go
+(see web.render in internal/web/server.go) and passes the result here as
+already-escaped HTML.
+*/}}
 {{define "layout"}}<!doctype html>
 <html lang="en">
 <head>
@@ -9,7 +17,7 @@
 </head>
 <body>
     <main id="app">
-        {{template "content" .}}
+        {{.Body}}
     </main>
 </body>
 </html>

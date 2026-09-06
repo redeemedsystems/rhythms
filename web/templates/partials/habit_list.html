@@ -1,0 +1,9 @@
+{{define "habit_list"}}
+{{if not .Habits}}
+    <p class="empty-state">No habits yet. <a href="/habits/new">Add one</a>.</p>
+{{else}}
+    <ul class="habit-list">
+        {{range .Habits}}{{template "habit_row" .}}{{end}}
+    </ul>
+{{end}}
+{{end}}

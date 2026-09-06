@@ -1,3 +1,37 @@
 {{define "habit_row"}}
-<!-- Rendered per habit in the list; real markup lands in M1. -->
+<li class="habit-row{{if .Archived}} habit-row-archived{{end}}" id="habit-{{.ID}}" style="--habit-color: {{.Color}}">
+    <button
+        class="checkmark checkmark-{{.TodayValue}}"
+        hx-post="/habits/{{.ID}}/entries/{{.TodayDate}}"
+        hx-target="#habit-{{.ID}}"
+        hx-swap="outerHTML"
+        aria-label="Toggle today's entry for {{.Name}}"
+    >&#10003;</button>
+
+    <div class="habit-info">
+        <a href="/habits/{{.ID}}/edit" class="habit-name">{{.Name}}</a>
+        {{if .Question}}<div class="habit-question">{{.Question}}</div>{{end}}
+    </div>
+
+    <div class="history-strip">
+        {{range .History}}
+            <button
+                class="history-square history-square-{{.Value}}{{if .IsToday}} history-square-today{{end}}"
+                hx-post="/habits/{{$.ID}}/entries/{{.Date}}"
+                hx-target="#habit-{{$.ID}}"
+                hx-swap="outerHTML"
+                title="{{.Date}}"
+            ></button>
+        {{end}}
+    </div>
+
+    <div class="habit-actions">
+        <form hx-post="/habits/{{.ID}}/archive{{.ListFilterQuery}}" hx-target="#habit-list" hx-swap="innerHTML">
+            <button type="submit" class="btn-link">{{if .Archived}}Unarchive{{else}}Archive{{end}}</button>
+        </form>
+        <form hx-post="/habits/{{.ID}}/delete{{.ListFilterQuery}}" hx-target="#habit-list" hx-swap="innerHTML" hx-confirm="Delete &quot;{{.Name}}&quot;? This cannot be undone.">
+            <button type="submit" class="btn-link btn-danger">Delete</button>
+        </form>
+    </div>
+</li>
 {{end}}

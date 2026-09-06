@@ -2,14 +2,23 @@
     color-scheme: light dark;
     --bg: #ffffff;
     --fg: #1a1a1a;
+    --muted: #767676;
+    --border: #e0e0e0;
+    --surface: #f7f7f7;
+    --danger: #d32f2f;
 }
 
 @media (prefers-color-scheme: dark) {
     :root {
         --bg: #121212;
         --fg: #eaeaea;
+        --muted: #9a9a9a;
+        --border: #333333;
+        --surface: #1e1e1e;
     }
 }
+
+* { box-sizing: border-box; }
 
 body {
     margin: 0;
@@ -23,3 +32,165 @@ body {
     margin: 0 auto;
     padding: 1rem;
 }
+
+a { color: inherit; }
+
+.page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.page-actions { display: flex; align-items: center; gap: 1rem; }
+
+.btn {
+    display: inline-block;
+    padding: 0.4rem 0.8rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    text-decoration: none;
+    color: var(--fg);
+    background: var(--surface);
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.btn-primary { border-color: #1976d2; color: #1976d2; }
+
+.btn-link {
+    background: none;
+    border: none;
+    color: var(--muted);
+    text-decoration: underline;
+    cursor: pointer;
+    font-size: 0.8rem;
+    padding: 0;
+}
+
+.btn-danger { color: var(--danger); }
+
+.empty-state { color: var(--muted); }
+
+.habit-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.habit-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--habit-color, var(--border));
+    border-radius: 8px;
+    background: var(--surface);
+}
+
+.habit-row-archived { opacity: 0.6; }
+
+.checkmark {
+    flex: 0 0 auto;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    background: var(--bg);
+    color: transparent;
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+}
+
+.checkmark-1, .checkmark-2 {
+    background: var(--habit-color, #388e3c);
+    border-color: var(--habit-color, #388e3c);
+    color: #fff;
+}
+
+.checkmark-3 { border-style: dashed; }
+
+.habit-info { flex: 1 1 auto; min-width: 0; }
+
+.habit-name { font-weight: 600; text-decoration: none; display: block; }
+.habit-question { font-size: 0.8rem; color: var(--muted); }
+
+.history-strip {
+    flex: 0 0 auto;
+    display: flex;
+    gap: 3px;
+}
+
+.history-square {
+    width: 0.9rem;
+    height: 0.9rem;
+    border-radius: 3px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    padding: 0;
+    cursor: pointer;
+}
+
+.history-square-1, .history-square-2 { background: var(--habit-color, #388e3c); border-color: transparent; }
+.history-square-3 { border-style: dashed; }
+.history-square-today { outline: 2px solid var(--muted); outline-offset: 1px; }
+
+.habit-actions {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.15rem;
+}
+
+form { display: flex; flex-direction: column; gap: 0.9rem; max-width: 480px; }
+
+label { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.9rem; }
+
+.hint { font-weight: normal; color: var(--muted); font-size: 0.75rem; }
+
+input[type="text"], textarea {
+    padding: 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--fg);
+    font: inherit;
+}
+
+textarea { min-height: 4rem; resize: vertical; }
+
+fieldset.color-picker {
+    border: none;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.color-picker legend { font-size: 0.9rem; margin-bottom: 0.25rem; }
+
+.color-swatch {
+    width: 1.6rem;
+    height: 1.6rem;
+    border-radius: 50%;
+    background: var(--swatch-color);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border: 2px solid transparent;
+}
+
+.color-swatch:has(input:checked) { border-color: var(--fg); }
+.color-swatch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+
+.form-actions { display: flex; gap: 0.75rem; }
+
+.form-error { color: var(--danger); font-size: 0.9rem; }

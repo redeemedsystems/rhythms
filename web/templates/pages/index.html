@@ -1,4 +1,16 @@
-{{define "content"}}
-<h1>Rhythms</h1>
-<p>Habit list will go here (M1).</p>
+{{define "page_index"}}
+<div class="page-header">
+    <h1>Rhythms</h1>
+    <div class="page-actions">
+        <a href="/habits/new" class="btn btn-primary">+ New Habit</a>
+        {{if .ShowArchived}}
+            <a href="/">Show active</a>
+        {{else}}
+            <a href="/?archived=1">Show archived</a>
+        {{end}}
+    </div>
+</div>
+<div id="habit-list">
+    {{template "habit_list" .}}
+</div>
 {{end}}
