@@ -45,4 +45,23 @@ type ReminderRepo interface {
 	Get(ctx context.Context, habitID int64) (Reminder, bool, error)
 	Set(ctx context.Context, r Reminder) error
 	Delete(ctx context.Context, habitID int64) error
+
+	// ListActive returns every habit id that has a reminder configured,
+	// paired with the reminder itself — what the scheduler polls each tick.
+	ListActive(ctx context.Context) (map[int64]Reminder, error)
+}
+
+// PushSubscriptionRepo persists browsers' Web Push registrations.
+type PushSubscriptionRepo interface {
+	List(ctx context.Context) ([]PushSubscription, error)
+	Upsert(ctx context.Context, s PushSubscription) error
+	Delete(ctx context.Context, endpoint string) error
+}
+
+// ReminderLogRepo dedupes reminder sends: a poll-based scheduler checks
+// "at or past due" every tick, so it needs to remember it already sent
+// today's notification for a given habit.
+type ReminderLogRepo interface {
+	WasSent(ctx context.Context, habitID int64, date Date) (bool, error)
+	MarkSent(ctx context.Context, habitID int64, date Date) error
 }

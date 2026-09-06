@@ -17,6 +17,12 @@ type Config struct {
 	// deployment-wide preference rather than per-habit, matching how
 	// uHabits itself exposes this as a single app-level setting.
 	SkipEnabled bool
+
+	// VAPIDSubject identifies the sender to push services (a mailto: or
+	// https: contact), as required by the Web Push spec. No default — an
+	// operator-specific contact is the point, so it must be set explicitly
+	// for reminders to actually send.
+	VAPIDSubject string
 }
 
 func Load() Config {
@@ -26,6 +32,7 @@ func Load() Config {
 		BasicAuthUser: os.Getenv("RHYTHMS_BASIC_AUTH_USER"),
 		BasicAuthPass: os.Getenv("RHYTHMS_BASIC_AUTH_PASS"),
 		SkipEnabled:   envBoolOr("RHYTHMS_SKIP_ENABLED", true),
+		VAPIDSubject:  envOr("RHYTHMS_VAPID_SUBJECT", "mailto:admin@localhost"),
 	}
 }
 

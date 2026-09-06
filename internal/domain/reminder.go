@@ -3,8 +3,6 @@ package domain
 import "time"
 
 // Reminder is a per-habit daily alert time, gated to specific weekdays.
-// Configuring one doesn't yet send anything — that's M5 (Web Push); for now
-// it's just data a future notification path will read.
 type Reminder struct {
 	HabitID     int64
 	Hour        int // 0-23
@@ -34,4 +32,25 @@ func WeekdayMaskFrom(weekdays ...time.Weekday) int {
 		mask |= 1 << weekdayBit(w)
 	}
 	return mask
+}
+
+// IsDue reports whether this reminder should fire right now. The scheduler
+// polls periodically rather than firing at one exact instant, so "due"
+// means "at or past the trigger time, on an active weekday" — alreadySent
+// and alreadyCompleted are what keep a poll-based scheduler from re-firing
+// every tick for the rest of the day.
+func (r Reminder) IsDue(now time.Time, alreadySentToday, alreadyCompletedToday bool) bool {
+	if alreadySentToday || alreadyCompletedToday {
+		return false
+	}
+	if !r.ActiveOn(now.Weekday()) {
+		return false
+	}
+	if now.Hour() < r.Hour {
+		return false
+	}
+	if now.Hour() == r.Hour && now.Minute() < r.Minute {
+		return false
+	}
+	return true
 }

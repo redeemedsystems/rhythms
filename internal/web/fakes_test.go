@@ -14,9 +14,10 @@ import (
 // against a fast, deterministic backend instead of a real SQLite file.
 
 var (
-	_ domain.HabitRepo    = (*fakeHabitRepo)(nil)
-	_ domain.EntryRepo    = (*fakeEntryRepo)(nil)
-	_ domain.ReminderRepo = (*fakeReminderRepo)(nil)
+	_ domain.HabitRepo            = (*fakeHabitRepo)(nil)
+	_ domain.EntryRepo            = (*fakeEntryRepo)(nil)
+	_ domain.ReminderRepo         = (*fakeReminderRepo)(nil)
+	_ domain.PushSubscriptionRepo = (*fakePushSubscriptionRepo)(nil)
 )
 
 type fakeHabitRepo struct {
@@ -165,5 +166,35 @@ func (f *fakeReminderRepo) Set(ctx context.Context, r domain.Reminder) error {
 
 func (f *fakeReminderRepo) Delete(ctx context.Context, habitID int64) error {
 	delete(f.reminders, habitID)
+	return nil
+}
+
+func (f *fakeReminderRepo) ListActive(ctx context.Context) (map[int64]domain.Reminder, error) {
+	return f.reminders, nil
+}
+
+type fakePushSubscriptionRepo struct {
+	subs map[string]domain.PushSubscription
+}
+
+func newFakePushSubscriptionRepo() *fakePushSubscriptionRepo {
+	return &fakePushSubscriptionRepo{subs: map[string]domain.PushSubscription{}}
+}
+
+func (f *fakePushSubscriptionRepo) List(ctx context.Context) ([]domain.PushSubscription, error) {
+	out := make([]domain.PushSubscription, 0, len(f.subs))
+	for _, s := range f.subs {
+		out = append(out, s)
+	}
+	return out, nil
+}
+
+func (f *fakePushSubscriptionRepo) Upsert(ctx context.Context, s domain.PushSubscription) error {
+	f.subs[s.Endpoint] = s
+	return nil
+}
+
+func (f *fakePushSubscriptionRepo) Delete(ctx context.Context, endpoint string) error {
+	delete(f.subs, endpoint)
 	return nil
 }

@@ -11,7 +11,11 @@ already-escaped HTML.
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#00897B">
+    <meta name="vapid-public-key" content="{{.VapidPublicKey}}">
     <title>Rhythms</title>
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
     <link rel="stylesheet" href="/static/css/app.css">
     <script src="/static/htmx.min.js"></script>
     <script src="/static/sortable.min.js"></script>
@@ -21,6 +25,7 @@ already-escaped HTML.
         {{.Body}}
     </main>
     <script src="/static/js/app.js"></script>
+    <script src="/static/js/push.js"></script>
 </body>
 </html>
 {{end}}

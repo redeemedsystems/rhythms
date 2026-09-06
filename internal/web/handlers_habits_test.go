@@ -22,7 +22,8 @@ func newTestServer(t *testing.T) (*Server, *fakeHabitRepo, *fakeEntryRepo) {
 	habits := newFakeHabitRepo()
 	entries := newFakeEntryRepo()
 	reminders := newFakeReminderRepo()
-	return &Server{cfg: config.Config{}, habits: habits, entries: entries, reminders: reminders, tmpl: tmpl}, habits, entries
+	pushSubs := newFakePushSubscriptionRepo()
+	return &Server{cfg: config.Config{}, habits: habits, entries: entries, reminders: reminders, pushSubs: pushSubs, tmpl: tmpl}, habits, entries
 }
 
 func doRequest(t *testing.T, s *Server, method, target string, body string) *httptest.ResponseRecorder {

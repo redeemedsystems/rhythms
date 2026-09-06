@@ -29,6 +29,43 @@ func TestAllWeekdaysMaskIsEveryDay(t *testing.T) {
 	}
 }
 
+func TestReminderIsDue(t *testing.T) {
+	// Monday 2026-09-07, 08:00 reminder, active every weekday.
+	r := Reminder{Hour: 8, Minute: 0, WeekdayMask: AllWeekdaysMask}
+	monday830 := time.Date(2026, 9, 7, 8, 30, 0, 0, time.UTC)
+	monday759 := time.Date(2026, 9, 7, 7, 59, 0, 0, time.UTC)
+	monday800 := time.Date(2026, 9, 7, 8, 0, 0, 0, time.UTC)
+
+	tests := []struct {
+		name                                    string
+		now                                     time.Time
+		alreadySentToday, alreadyCompletedToday bool
+		want                                    bool
+	}{
+		{"before trigger time", monday759, false, false, false},
+		{"exactly at trigger time", monday800, false, false, true},
+		{"after trigger time", monday830, false, false, true},
+		{"already sent today", monday830, true, false, false},
+		{"already completed today", monday830, false, true, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := r.IsDue(tt.now, tt.alreadySentToday, tt.alreadyCompletedToday); got != tt.want {
+				t.Errorf("IsDue(%v, sent=%v, done=%v) = %v, want %v", tt.now, tt.alreadySentToday, tt.alreadyCompletedToday, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestReminderIsDueRespectsWeekdayMask(t *testing.T) {
+	// Reminder only active on weekends; Monday 2026-09-07 at 09:00 should not fire.
+	r := Reminder{Hour: 8, Minute: 0, WeekdayMask: WeekdayMaskFrom(time.Saturday, time.Sunday)}
+	monday := time.Date(2026, 9, 7, 9, 0, 0, 0, time.UTC)
+	if r.IsDue(monday, false, false) {
+		t.Error("expected reminder not active on Monday to not be due")
+	}
+}
+
 func TestFormattedValue(t *testing.T) {
 	tests := []struct {
 		v    EntryValue

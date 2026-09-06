@@ -15,12 +15,14 @@ import (
 )
 
 type Server struct {
-	cfg       config.Config
-	db        *sql.DB
-	habits    domain.HabitRepo
-	entries   domain.EntryRepo
-	reminders domain.ReminderRepo
-	tmpl      *template.Template
+	cfg            config.Config
+	db             *sql.DB
+	habits         domain.HabitRepo
+	entries        domain.EntryRepo
+	reminders      domain.ReminderRepo
+	pushSubs       domain.PushSubscriptionRepo
+	vapidPublicKey string
+	tmpl           *template.Template
 }
 
 var templateFuncs = template.FuncMap{
@@ -29,18 +31,20 @@ var templateFuncs = template.FuncMap{
 	"hasWeekdayBit": func(mask, bit int) bool { return mask&(1<<bit) != 0 },
 }
 
-func NewServer(cfg config.Config, db *sql.DB) (*Server, error) {
+func NewServer(cfg config.Config, db *sql.DB, vapidPublicKey string) (*Server, error) {
 	tmpl, err := template.New("").Funcs(templateFuncs).ParseFS(webassets.TemplatesFS, "templates/*.html", "templates/pages/*.html", "templates/partials/*.html")
 	if err != nil {
 		return nil, err
 	}
 	return &Server{
-		cfg:       cfg,
-		db:        db,
-		habits:    store.NewHabitRepo(db),
-		entries:   store.NewEntryRepo(db),
-		reminders: store.NewReminderRepo(db),
-		tmpl:      tmpl,
+		cfg:            cfg,
+		db:             db,
+		habits:         store.NewHabitRepo(db),
+		entries:        store.NewEntryRepo(db),
+		reminders:      store.NewReminderRepo(db),
+		pushSubs:       store.NewPushSubscriptionRepo(db),
+		vapidPublicKey: vapidPublicKey,
+		tmpl:           tmpl,
 	}, nil
 }
 
@@ -51,6 +55,10 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /{$}", s.handleIndex)
 	mux.HandleFunc("GET /today", s.handleToday)
 	mux.HandleFunc("GET /backup", s.handleBackup)
+	mux.HandleFunc("GET /manifest.webmanifest", s.handleManifest)
+	mux.HandleFunc("GET /sw.js", s.handleServiceWorker)
+	mux.HandleFunc("POST /push/subscribe", s.handlePushSubscribe)
+	mux.HandleFunc("POST /push/unsubscribe", s.handlePushUnsubscribe)
 
 	mux.HandleFunc("GET /habits/new", s.handleHabitNewForm)
 	mux.HandleFunc("GET /habits/{id}/export.csv", s.handleHabitExportCSV)
@@ -82,6 +90,11 @@ func (s *Server) handleHealthz(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("ok"))
 }
 
+type layoutData struct {
+	Body           template.HTML
+	VapidPublicKey string
+}
+
 // render executes the named page-body template into a buffer, then wraps it
 // in the shared layout. Keeping pages out of the layout's own template
 // namespace avoids the {{define "content"}} collision described in layout.html.
@@ -91,7 +104,7 @@ func (s *Server) render(w http.ResponseWriter, pageTemplate string, data any) {
 		s.serverError(w, err)
 		return
 	}
-	if err := s.tmpl.ExecuteTemplate(w, "layout", struct{ Body template.HTML }{template.HTML(body.String())}); err != nil {
+	if err := s.tmpl.ExecuteTemplate(w, "layout", layoutData{Body: template.HTML(body.String()), VapidPublicKey: s.vapidPublicKey}); err != nil {
 		s.serverError(w, err)
 	}
 }

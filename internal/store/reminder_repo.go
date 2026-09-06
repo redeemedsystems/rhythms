@@ -51,3 +51,25 @@ func (r *ReminderRepo) Delete(ctx context.Context, habitID int64) error {
 	}
 	return nil
 }
+
+// ListActive joins reminders against non-archived habits, so a reminder on
+// an archived habit is naturally excluded from what the scheduler polls.
+func (r *ReminderRepo) ListActive(ctx context.Context) (map[int64]domain.Reminder, error) {
+	rows, err := r.db.QueryContext(ctx, `SELECT reminders.habit_id, hour, minute, weekday_mask
+		FROM reminders JOIN habits ON habits.id = reminders.habit_id
+		WHERE habits.archived = 0`)
+	if err != nil {
+		return nil, fmt.Errorf("list active reminders: %w", err)
+	}
+	defer rows.Close()
+
+	out := make(map[int64]domain.Reminder)
+	for rows.Next() {
+		var rem domain.Reminder
+		if err := rows.Scan(&rem.HabitID, &rem.Hour, &rem.Minute, &rem.WeekdayMask); err != nil {
+			return nil, fmt.Errorf("scan reminder: %w", err)
+		}
+		out[rem.HabitID] = rem
+	}
+	return out, rows.Err()
+}
