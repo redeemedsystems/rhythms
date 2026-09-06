@@ -86,6 +86,7 @@ func (s *Server) Routes() http.Handler {
 	authed.HandleFunc("GET /habits/{id}/edit", s.handleHabitEditForm)
 	authed.HandleFunc("POST /habits/{id}/edit", s.handleHabitUpdate)
 	authed.HandleFunc("POST /habits/{id}/delete", s.handleHabitArchive)
+	authed.HandleFunc("POST /habits/{id}/move", s.handleHabitMove)
 
 	authed.HandleFunc("GET /dashboard", s.handleDashboard)
 	authed.HandleFunc("GET /dashboard/partial", s.handleDashboardPartial)

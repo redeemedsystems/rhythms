@@ -8,7 +8,11 @@
       {{else}}
         {{.ProgressLabel}}
       {{end}}
-      {{if gt .CurrentStreak 0}} &middot; <span class="streak-badge">{{.CurrentStreak}}-day streak</span>{{end}}
+      {{if gt .CurrentStreak 0}}
+        &middot; <span class="streak-badge">{{.CurrentStreak}}-day streak</span>
+        {{with streakBadge .CurrentStreak}} <span class="milestone-badge">{{.}}</span>{{end}}
+        {{if and (eq .CurrentStreak .BestStreak) (gt .BestStreak 0)}} <span class="milestone-badge" title="Personal best">🏆 personal best</span>{{end}}
+      {{end}}
     </div>
   </div>
   <button

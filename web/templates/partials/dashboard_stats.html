@@ -2,6 +2,7 @@
   <div class="name">{{.Habit.Name}}</div>
   <div class="meta">
     {{.CompletionPct}}% this month &middot; current streak {{.CurrentStreak}} &middot; best streak {{.BestStreak}}
+    {{with streakBadge .CurrentStreak}} <span class="milestone-badge">{{.}}</span>{{end}}
   </div>
   <div class="calendar">
     <div class="calendar-weekdays">
@@ -34,11 +35,15 @@
 
 <div id="day-detail"></div>
 
-{{if not .Stats}}
+{{if not .Groups}}
   <div class="card"><p>No habits yet. <a href="/habits/new">Add one</a> to start tracking.</p></div>
 {{else}}
-  {{range .Stats}}
+  {{$multiGroup := gt (len .Groups) 1}}
+  {{range .Groups}}
+  {{if $multiGroup}}<h3 class="category-heading">{{if .Name}}{{.Name}}{{else}}Uncategorized{{end}}</h3>{{end}}
+  {{range .Items}}
     {{template "habit_calendar_card" .}}
+  {{end}}
   {{end}}
 {{end}}
 {{end}}

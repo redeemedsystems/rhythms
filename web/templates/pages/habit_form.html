@@ -32,6 +32,12 @@
   </div>
 
   <div class="field">
+    <label for="category">Category (optional, groups habits on Today/Habits/Dashboard)</label>
+    <input type="text" id="category" name="category" placeholder="Health, Morning, Work, ..."
+           value="{{if $h}}{{$h.Category}}{{end}}">
+  </div>
+
+  <div class="field">
     <label for="schedule_kind">Schedule</label>
     <select id="schedule_kind" name="schedule_kind">
       <option value="daily" {{if $h}}{{if eq $h.ScheduleKind "daily"}}selected{{end}}{{end}}>Once daily</option>

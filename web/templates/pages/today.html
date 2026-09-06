@@ -1,11 +1,15 @@
 {{define "content"}}
 <h2>Today</h2>
-{{if not .Habits}}
+{{if not .Groups}}
   <div class="card">
     <p>No habits yet.</p>
     <a class="btn" href="/habits/new">Add your first rhythm</a>
   </div>
 {{else}}
-  {{range .Habits}}{{template "habit_card" .}}{{end}}
+  {{$multiGroup := gt (len .Groups) 1}}
+  {{range .Groups}}
+  {{if $multiGroup}}<h3 class="category-heading">{{if .Name}}{{.Name}}{{else}}Uncategorized{{end}}</h3>{{end}}
+  {{range .Items}}{{template "habit_card" .}}{{end}}
+  {{end}}
 {{end}}
 {{end}}

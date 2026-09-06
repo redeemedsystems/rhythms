@@ -11,7 +11,7 @@ import (
 
 type HabitsPageData struct {
 	Base
-	Habits []*store.Habit
+	Groups []HabitGroup
 }
 
 func (s *Server) handleHabitsList(w http.ResponseWriter, r *http.Request) {
@@ -23,8 +23,60 @@ func (s *Server) handleHabitsList(w http.ResponseWriter, r *http.Request) {
 	}
 	s.render.Page(w, "habits_list.html", HabitsPageData{
 		Base:   s.baseFor(r, "habits"),
-		Habits: habits,
+		Groups: groupHabits(habits),
 	})
+}
+
+// handleHabitMove swaps a habit's sort_order with its neighbor in the
+// requested direction, within its own category group, then redirects back
+// to /habits - a plain form POST, matching this page's existing
+// non-htmx actions (e.g. the archive button).
+func (s *Server) handleHabitMove(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	if _, err := s.habitForUser(r, id); err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	user := auth.UserFromContext(r.Context())
+	habits, err := store.ListHabitsForUser(s.db, user.ID, true)
+	if err != nil {
+		s.internalError(w, err)
+		return
+	}
+
+	direction := r.FormValue("direction")
+	for _, group := range groupHabits(habits) {
+		for i, h := range group.Habits {
+			if h.ID != id {
+				continue
+			}
+			var neighbor *store.Habit
+			switch direction {
+			case "up":
+				if i > 0 {
+					neighbor = group.Habits[i-1]
+				}
+			case "down":
+				if i < len(group.Habits)-1 {
+					neighbor = group.Habits[i+1]
+				}
+			}
+			if neighbor != nil {
+				if err := store.SwapHabitOrder(s.db, id, neighbor.ID); err != nil {
+					s.internalError(w, err)
+					return
+				}
+			}
+			http.Redirect(w, r, "/habits", http.StatusSeeOther)
+			return
+		}
+	}
+	http.NotFound(w, r)
 }
 
 type HabitFormPageData struct {
@@ -135,6 +187,7 @@ func parseHabitForm(r *http.Request) (store.HabitInput, error) {
 	habitType := r.FormValue("type")
 	scheduleKind := r.FormValue("schedule_kind")
 	unit := strings.TrimSpace(r.FormValue("unit"))
+	category := strings.TrimSpace(r.FormValue("category"))
 
 	if name == "" {
 		return store.HabitInput{}, errValidation("Name is required.")
@@ -181,6 +234,7 @@ func parseHabitForm(r *http.Request) (store.HabitInput, error) {
 		Type:          habitType,
 		TargetCount:   targetCount,
 		Unit:          unit,
+		Category:      category,
 		ScheduleKind:  scheduleKind,
 		ScheduleTimes: scheduleTimes,
 	}, nil

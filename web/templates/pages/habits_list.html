@@ -2,27 +2,44 @@
 <h2>Your habits</h2>
 <p><a class="btn" href="/habits/new">+ New habit</a></p>
 
-{{if not .Habits}}
+{{if not .Groups}}
   <div class="card"><p>No habits yet. Add one to get started.</p></div>
 {{else}}
   {{$csrf := .CSRFToken}}
-  {{range .Habits}}
+  {{$multiGroup := gt (len .Groups) 1}}
+  {{range .Groups}}
+  {{if $multiGroup}}<h3 class="category-heading">{{if .Name}}{{.Name}}{{else}}Uncategorized{{end}}</h3>{{end}}
+  {{$n := len .Habits}}
+  {{range $i, $h := .Habits}}
   <div class="card habit-card">
     <div>
-      <div class="name">{{.Name}}</div>
+      <div class="name">{{$h.Name}}</div>
       <div class="meta">
-        {{.Type}} &middot; {{.ScheduleKind}}
-        {{if .TargetCount.Valid}} &middot; target {{.TargetCount.Int64}}{{if .Unit.Valid}} {{.Unit.String}}{{end}}{{end}}
+        {{$h.Type}} &middot; {{$h.ScheduleKind}}
+        {{if $h.TargetCount.Valid}} &middot; target {{$h.TargetCount.Int64}}{{if $h.Unit.Valid}} {{$h.Unit.String}}{{end}}{{end}}
       </div>
     </div>
+    <div class="habit-move">
+      <form method="post" action="/habits/{{$h.ID}}/move" style="display:inline">
+        <input type="hidden" name="csrf_token" value="{{$csrf}}">
+        <input type="hidden" name="direction" value="up">
+        <button class="btn secondary" type="submit" {{if eq $i 0}}disabled{{end}} aria-label="Move up">&uarr;</button>
+      </form>
+      <form method="post" action="/habits/{{$h.ID}}/move" style="display:inline">
+        <input type="hidden" name="csrf_token" value="{{$csrf}}">
+        <input type="hidden" name="direction" value="down">
+        <button class="btn secondary" type="submit" {{if isLast $i $n}}disabled{{end}} aria-label="Move down">&darr;</button>
+      </form>
+    </div>
     <div>
-      <a class="btn secondary" href="/habits/{{.ID}}/edit">Edit</a>
-      <form method="post" action="/habits/{{.ID}}/delete" style="display:inline">
+      <a class="btn secondary" href="/habits/{{$h.ID}}/edit">Edit</a>
+      <form method="post" action="/habits/{{$h.ID}}/delete" style="display:inline">
         <input type="hidden" name="csrf_token" value="{{$csrf}}">
         <button class="btn danger" type="submit">Archive</button>
       </form>
     </div>
   </div>
+  {{end}}
   {{end}}
 {{end}}
 {{end}}

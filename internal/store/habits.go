@@ -24,6 +24,7 @@ type Habit struct {
 	Type          string
 	TargetCount   sql.NullInt64
 	Unit          sql.NullString
+	Category      string
 	ScheduleKind  string
 	ScheduleTimes []string
 	Active        bool
@@ -37,6 +38,7 @@ type HabitInput struct {
 	Type          string
 	TargetCount   *int64
 	Unit          string
+	Category      string
 	ScheduleKind  string
 	ScheduleTimes []string
 }
@@ -48,9 +50,9 @@ func CreateHabit(db *sql.DB, userID int64, in HabitInput) (*Habit, error) {
 	}
 
 	res, err := db.Exec(
-		`INSERT INTO habits (user_id, name, type, target_count, unit, schedule_kind, schedule_times)
-		 VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		userID, in.Name, in.Type, nullableInt(in.TargetCount), nullableStr(in.Unit), in.ScheduleKind, string(scheduleJSON),
+		`INSERT INTO habits (user_id, name, type, target_count, unit, category, schedule_kind, schedule_times)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		userID, in.Name, in.Type, nullableInt(in.TargetCount), nullableStr(in.Unit), in.Category, in.ScheduleKind, string(scheduleJSON),
 	)
 	if err != nil {
 		return nil, err
@@ -68,11 +70,36 @@ func UpdateHabit(db *sql.DB, id int64, in HabitInput) error {
 		return err
 	}
 	_, err = db.Exec(
-		`UPDATE habits SET name = ?, type = ?, target_count = ?, unit = ?, schedule_kind = ?, schedule_times = ?
+		`UPDATE habits SET name = ?, type = ?, target_count = ?, unit = ?, category = ?, schedule_kind = ?, schedule_times = ?
 		 WHERE id = ?`,
-		in.Name, in.Type, nullableInt(in.TargetCount), nullableStr(in.Unit), in.ScheduleKind, string(scheduleJSON), id,
+		in.Name, in.Type, nullableInt(in.TargetCount), nullableStr(in.Unit), in.Category, in.ScheduleKind, string(scheduleJSON), id,
 	)
 	return err
+}
+
+// SwapHabitOrder exchanges the sort_order of two habits, used to move a
+// habit up or down within its category on the habits list page.
+func SwapHabitOrder(db *sql.DB, aID, bID int64) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	var aOrder, bOrder int
+	if err := tx.QueryRow(`SELECT sort_order FROM habits WHERE id = ?`, aID).Scan(&aOrder); err != nil {
+		return err
+	}
+	if err := tx.QueryRow(`SELECT sort_order FROM habits WHERE id = ?`, bID).Scan(&bOrder); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`UPDATE habits SET sort_order = ? WHERE id = ?`, bOrder, aID); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`UPDATE habits SET sort_order = ? WHERE id = ?`, aOrder, bID); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func ArchiveHabit(db *sql.DB, id int64) error {
@@ -82,14 +109,14 @@ func ArchiveHabit(db *sql.DB, id int64) error {
 
 func GetHabit(db *sql.DB, id int64) (*Habit, error) {
 	return scanHabit(db.QueryRow(
-		`SELECT id, user_id, name, type, target_count, unit, schedule_kind, schedule_times,
+		`SELECT id, user_id, name, type, target_count, unit, category, schedule_kind, schedule_times,
 		        active, sort_order, created_at, archived_at
 		 FROM habits WHERE id = ?`, id,
 	))
 }
 
 func ListHabitsForUser(db *sql.DB, userID int64, activeOnly bool) ([]*Habit, error) {
-	query := `SELECT id, user_id, name, type, target_count, unit, schedule_kind, schedule_times,
+	query := `SELECT id, user_id, name, type, target_count, unit, category, schedule_kind, schedule_times,
 	                 active, sort_order, created_at, archived_at
 	          FROM habits WHERE user_id = ?`
 	if activeOnly {
@@ -118,7 +145,7 @@ func ListHabitsForUser(db *sql.DB, userID int64, activeOnly bool) ([]*Habit, err
 // across all users.
 func ListAllActiveHabits(db *sql.DB) ([]*Habit, error) {
 	rows, err := db.Query(
-		`SELECT id, user_id, name, type, target_count, unit, schedule_kind, schedule_times,
+		`SELECT id, user_id, name, type, target_count, unit, category, schedule_kind, schedule_times,
 		        active, sort_order, created_at, archived_at
 		 FROM habits WHERE active = 1 AND schedule_kind = 'specific_times'`,
 	)
@@ -160,7 +187,7 @@ func scanHabitRow(row rowScanner) (*Habit, error) {
 	var active int
 
 	if err := row.Scan(
-		&h.ID, &h.UserID, &h.Name, &h.Type, &targetCount, &unit, &h.ScheduleKind, &scheduleTimes,
+		&h.ID, &h.UserID, &h.Name, &h.Type, &targetCount, &unit, &h.Category, &h.ScheduleKind, &scheduleTimes,
 		&active, &h.SortOrder, &createdAt, &archivedAt,
 	); err != nil {
 		return nil, err

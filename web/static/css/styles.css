@@ -104,6 +104,21 @@ nav.tabbar a.active { color: var(--accent); font-weight: 600; }
 .habit-card .name { font-weight: 600; }
 .habit-card .meta { color: var(--text-dim); font-size: 0.85rem; }
 
+.category-heading {
+  margin: var(--gap) 0 0.35rem;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.habit-move { display: flex; gap: 0.35rem; }
+.habit-move .btn {
+  padding: 0.3rem 0.6rem;
+  min-height: auto;
+}
+.habit-move .btn:disabled { opacity: 0.35; cursor: default; }
+
 button, .btn {
   font: inherit;
   border: none;
@@ -145,6 +160,11 @@ form .field { margin-bottom: var(--gap); }
 .streak-badge {
   font-size: 0.8rem;
   color: var(--accent);
+  font-weight: 600;
+}
+
+.milestone-badge {
+  font-size: 0.85rem;
   font-weight: 600;
 }
 

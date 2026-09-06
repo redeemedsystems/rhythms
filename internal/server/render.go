@@ -12,7 +12,9 @@ import (
 )
 
 var funcMap = template.FuncMap{
-	"join": strings.Join,
+	"join":        strings.Join,
+	"streakBadge": streakBadge,
+	"isLast":      func(i, n int) bool { return i == n-1 },
 }
 
 // Base carries the fields every full-page template needs; page-specific data

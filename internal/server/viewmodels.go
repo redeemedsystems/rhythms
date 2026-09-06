@@ -13,6 +13,7 @@ type HabitWithStatus struct {
 	TodayAmount   int
 	Complete      bool
 	CurrentStreak int
+	BestStreak    int
 }
 
 func newHabitWithStatus(h *store.Habit, amount int) HabitWithStatus {

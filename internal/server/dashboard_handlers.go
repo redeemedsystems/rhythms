@@ -30,7 +30,7 @@ type DashboardPageData struct {
 	MonthLabel string
 	PrevMonth  string
 	NextMonth  string
-	Stats      []HabitStats
+	Groups     []HabitStatsGroup
 }
 
 func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
@@ -84,7 +84,7 @@ func (s *Server) buildDashboardData(r *http.Request, monthParam string) (*Dashbo
 		MonthLabel: monthFirst.Format("January 2006"),
 		PrevMonth:  prev.Format("2006-01"),
 		NextMonth:  next.Format("2006-01"),
-		Stats:      stats,
+		Groups:     groupHabitStats(stats),
 	}, nil
 }
 
@@ -110,7 +110,7 @@ func (s *Server) habitStatsForMonth(h *store.Habit, year int, month time.Month, 
 	if err != nil {
 		return HabitStats{}, err
 	}
-	currentStreak, err := s.currentStreakFor(h, now)
+	currentStreak, _, err := s.streaksFor(h, now)
 	if err != nil {
 		return HabitStats{}, err
 	}

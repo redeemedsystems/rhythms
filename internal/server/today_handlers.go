@@ -11,7 +11,7 @@ import (
 
 type TodayPageData struct {
 	Base
-	Habits  []HabitWithStatus
+	Groups  []HabitStatusGroup
 	LogDate string
 }
 
@@ -34,15 +34,16 @@ func (s *Server) handleToday(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		hws := newHabitWithStatus(h, amount)
-		if streak, err := s.currentStreakFor(h, now); err == nil {
-			hws.CurrentStreak = streak
+		if current, best, err := s.streaksFor(h, now); err == nil {
+			hws.CurrentStreak = current
+			hws.BestStreak = best
 		}
 		items = append(items, hws)
 	}
 
 	s.render.Page(w, "today.html", TodayPageData{
 		Base:    s.baseFor(r, "today"),
-		Habits:  items,
+		Groups:  groupHabitStatuses(items),
 		LogDate: logDate,
 	})
 }
@@ -89,20 +90,25 @@ func (s *Server) handleHabitLog(w http.ResponseWriter, r *http.Request) {
 	}
 
 	hws := newHabitWithStatus(habit, amount)
-	if streak, err := s.currentStreakFor(habit, store.NowIn(user.Timezone)); err == nil {
-		hws.CurrentStreak = streak
+	if current, best, err := s.streaksFor(habit, store.NowIn(user.Timezone)); err == nil {
+		hws.CurrentStreak = current
+		hws.BestStreak = best
 	}
 
 	s.render.Partial(w, "habit_card", hws)
 }
 
-// currentStreakFor pulls roughly a year of completion history for the habit
-// and walks it backwards from now to find the current streak.
-func (s *Server) currentStreakFor(habit *store.Habit, now time.Time) (int, error) {
+// streaksFor pulls roughly a year of completion history for the habit and
+// returns both its current streak (walking backwards from now) and its
+// best streak within that same window, so a caller needing just one avoids
+// a second query by ignoring the other return value.
+func (s *Server) streaksFor(habit *store.Habit, now time.Time) (current, best int, err error) {
 	from := now.AddDate(-1, 0, -5)
 	completion, err := store.CompletionByDate(s.db, habit.ID, from.Format("2006-01-02"), now.Format("2006-01-02"))
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
-	return store.CurrentStreak(habit, completion, now), nil
+	current = store.CurrentStreak(habit, completion, now)
+	best = store.BestStreak(habit, completion, store.DateRange(from, now))
+	return current, best, nil
 }
