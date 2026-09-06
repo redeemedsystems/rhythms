@@ -2,7 +2,9 @@ package auth
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"net/http"
 	"time"
 )
@@ -20,6 +22,14 @@ func GenerateToken() (string, error) {
 		return "", err
 	}
 	return base64.RawURLEncoding.EncodeToString(buf), nil
+}
+
+// HashToken returns the hex-encoded SHA-256 hash of a token, for storing a
+// long-lived, emailed token (e.g. a password reset link) without keeping the
+// raw value in the database.
+func HashToken(token string) string {
+	sum := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(sum[:])
 }
 
 func SetSessionCookie(w http.ResponseWriter, sessionID string, secure bool) {

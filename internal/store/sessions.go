@@ -61,6 +61,13 @@ func DeleteSession(db *sql.DB, id string) error {
 	return err
 }
 
+// DeleteSessionsForUser signs the user out everywhere, used after a password
+// reset so a stolen session can't survive it.
+func DeleteSessionsForUser(db *sql.DB, userID int64) error {
+	_, err := db.Exec(`DELETE FROM sessions WHERE user_id = ?`, userID)
+	return err
+}
+
 func DeleteExpiredSessions(db *sql.DB) error {
 	_, err := db.Exec(`DELETE FROM sessions WHERE expires_at < datetime('now')`)
 	return err

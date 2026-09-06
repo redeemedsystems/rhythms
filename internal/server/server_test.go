@@ -11,13 +11,22 @@ import (
 	"testing"
 
 	"rhythms/internal/config"
+	"rhythms/internal/mail"
 	"rhythms/internal/push"
 	"rhythms/internal/store"
 	"rhythms/web"
 )
 
-func newTestServer(t *testing.T) (*httptest.Server, *http.Client) {
+// newTestServer starts a test server backed by a fresh temp database. An
+// optional mailer lets a test capture outgoing emails (e.g. a password reset
+// link); it defaults to mail.LogSender{}, which discards them.
+func newTestServer(t *testing.T, mailer ...mail.Sender) (*httptest.Server, *http.Client) {
 	t.Helper()
+
+	var m mail.Sender = mail.LogSender{}
+	if len(mailer) > 0 {
+		m = mailer[0]
+	}
 
 	db, err := store.Open(t.TempDir() + "/test.db")
 	if err != nil {
@@ -38,7 +47,7 @@ func newTestServer(t *testing.T) (*httptest.Server, *http.Client) {
 	}
 	sender := push.NewSender(pub, priv, cfg.VAPIDSubscriber)
 
-	srv := New(db, renderer, web.FS, cfg, pub, sender)
+	srv := New(db, renderer, web.FS, cfg, pub, sender, m)
 	ts := httptest.NewServer(srv.Routes())
 	t.Cleanup(ts.Close)
 
@@ -237,6 +246,102 @@ func TestRegisterRejectsShortPassword(t *testing.T) {
 	}
 	if !strings.Contains(res.body, "at least 8 characters") {
 		t.Fatalf("expected validation message, got: %s", res.body)
+	}
+}
+
+// capturingMailer records sent emails instead of delivering them, so a test
+// can pull the reset link out of the body.
+type capturingMailer struct {
+	to, subject, body string
+}
+
+func (m *capturingMailer) Send(to, subject, body string) error {
+	m.to, m.subject, m.body = to, subject, body
+	return nil
+}
+
+func TestPasswordResetFlow(t *testing.T) {
+	mailer := &capturingMailer{}
+	ts, client := newTestServer(t, mailer)
+
+	doPostForm(t, client, ts.URL+"/register", url.Values{
+		"email":    {"reset@example.com"},
+		"password": {"original-password"},
+	})
+	// Registering logs the client in; use a fresh cookie-less client for the
+	// reset flow so it isn't riding the registration session.
+	client = &http.Client{CheckRedirect: func(req *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse
+	}}
+
+	res := doPostForm(t, client, ts.URL+"/forgot-password", url.Values{"email": {"reset@example.com"}})
+	if res.status != http.StatusOK || !strings.Contains(res.body, "we've sent a link") {
+		t.Fatalf("expected generic sent message, status=%d body=%s", res.status, res.body)
+	}
+	if mailer.to != "reset@example.com" {
+		t.Fatalf("expected email sent to reset@example.com, got %q", mailer.to)
+	}
+
+	tokenRe := regexp.MustCompile(`token=([\w-]+)`)
+	m := tokenRe.FindStringSubmatch(mailer.body)
+	if m == nil {
+		t.Fatalf("expected reset link in email body: %s", mailer.body)
+	}
+	token := m[1]
+
+	// Requesting a reset for an unknown email must produce the same message
+	// and must not send mail.
+	mailer.to = ""
+	res = doPostForm(t, client, ts.URL+"/forgot-password", url.Values{"email": {"nobody@example.com"}})
+	if res.status != http.StatusOK || !strings.Contains(res.body, "we've sent a link") {
+		t.Fatalf("expected generic sent message for unknown email, status=%d body=%s", res.status, res.body)
+	}
+	if mailer.to != "" {
+		t.Fatalf("expected no email sent for unknown address, got %q", mailer.to)
+	}
+
+	// A bad token is rejected.
+	res = doPostForm(t, client, ts.URL+"/reset-password", url.Values{
+		"token":    {"not-a-real-token"},
+		"password": {"new-password-123"},
+	})
+	if !strings.Contains(res.body, "invalid or has expired") {
+		t.Fatalf("expected invalid token message, got: %s", res.body)
+	}
+
+	// The real token resets the password.
+	res = doPostForm(t, client, ts.URL+"/reset-password", url.Values{
+		"token":    {token},
+		"password": {"new-password-123"},
+	})
+	if res.status != http.StatusSeeOther || res.header.Get("Location") != "/login?reset=success" {
+		t.Fatalf("expected redirect to /login?reset=success, got status=%d location=%q", res.status, res.header.Get("Location"))
+	}
+
+	// The token is single-use.
+	res = doPostForm(t, client, ts.URL+"/reset-password", url.Values{
+		"token":    {token},
+		"password": {"another-password-456"},
+	})
+	if !strings.Contains(res.body, "invalid or has expired") {
+		t.Fatalf("expected token reuse to be rejected, got: %s", res.body)
+	}
+
+	// Old password no longer works; new password does.
+	res = doPostForm(t, client, ts.URL+"/login", url.Values{
+		"email":    {"reset@example.com"},
+		"password": {"original-password"},
+	})
+	if !strings.Contains(res.body, "Invalid email or password") {
+		t.Fatalf("expected old password to be rejected, got: %s", res.body)
+	}
+
+	res = doPostForm(t, client, ts.URL+"/login", url.Values{
+		"email":    {"reset@example.com"},
+		"password": {"new-password-123"},
+	})
+	if res.status != http.StatusSeeOther {
+		t.Fatalf("expected new password to log in, got status=%d body=%s", res.status, res.body)
 	}
 }
 

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"rhythms/internal/config"
+	"rhythms/internal/mail"
 	"rhythms/internal/push"
 	"rhythms/internal/scheduler"
 	"rhythms/internal/server"
@@ -45,8 +46,9 @@ func run() error {
 		return err
 	}
 	sender := push.NewSender(vapidPublic, vapidPrivate, cfg.VAPIDSubscriber)
+	mailer := mail.NewFromConfig(cfg)
 
-	srv := server.New(db, renderer, web.FS, cfg, vapidPublic, sender)
+	srv := server.New(db, renderer, web.FS, cfg, vapidPublic, sender, mailer)
 
 	httpServer := &http.Server{
 		Addr:              cfg.Addr,

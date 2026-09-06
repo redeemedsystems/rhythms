@@ -7,6 +7,7 @@ import (
 
 	"rhythms/internal/auth"
 	"rhythms/internal/config"
+	"rhythms/internal/mail"
 	"rhythms/internal/push"
 )
 
@@ -17,9 +18,10 @@ type Server struct {
 	webFS          fs.FS
 	vapidPublicKey string
 	sender         *push.Sender
+	mailer         mail.Sender
 }
 
-func New(db *sql.DB, render *Renderer, webFS fs.FS, cfg config.Config, vapidPublicKey string, sender *push.Sender) *Server {
+func New(db *sql.DB, render *Renderer, webFS fs.FS, cfg config.Config, vapidPublicKey string, sender *push.Sender, mailer mail.Sender) *Server {
 	return &Server{
 		db:             db,
 		render:         render,
@@ -27,6 +29,7 @@ func New(db *sql.DB, render *Renderer, webFS fs.FS, cfg config.Config, vapidPubl
 		webFS:          webFS,
 		vapidPublicKey: vapidPublicKey,
 		sender:         sender,
+		mailer:         mailer,
 	}
 }
 
@@ -50,6 +53,10 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /register", s.handleRegister)
 	mux.HandleFunc("GET /login", s.handleLoginForm)
 	mux.HandleFunc("POST /login", s.handleLogin)
+	mux.HandleFunc("GET /forgot-password", s.handleForgotPasswordForm)
+	mux.HandleFunc("POST /forgot-password", s.handleForgotPassword)
+	mux.HandleFunc("GET /reset-password", s.handleResetPasswordForm)
+	mux.HandleFunc("POST /reset-password", s.handleResetPassword)
 
 	mux.HandleFunc("GET /manifest.json", serveEmbedded(s.webFS, "static/manifest.json", "application/manifest+json"))
 	mux.HandleFunc("GET /sw.js", serveEmbedded(s.webFS, "static/sw.js", "application/javascript"))

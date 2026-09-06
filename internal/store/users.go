@@ -43,6 +43,11 @@ func GetUserByEmail(db *sql.DB, email string) (*User, error) {
 	))
 }
 
+func UpdatePassword(db *sql.DB, userID int64, passwordHash string) error {
+	_, err := db.Exec(`UPDATE users SET password_hash = ? WHERE id = ?`, passwordHash, userID)
+	return err
+}
+
 func scanUser(row *sql.Row) (*User, error) {
 	var u User
 	var createdAt string
