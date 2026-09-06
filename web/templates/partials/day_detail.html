@@ -1,0 +1,36 @@
+{{define "day_detail"}}
+<div class="card day-detail">
+  <button type="button" class="secondary day-detail-close" onclick="document.getElementById('day-detail').innerHTML=''">Close</button>
+  <div class="name">{{.Status.Name}}</div>
+  <div class="meta">{{.DateLabel}}</div>
+
+  {{if .Logs}}
+  <ul class="day-detail-logs">
+    {{range .Logs}}
+    <li>
+      <span>{{if eq $.Status.Type "boolean"}}Done{{else}}{{.Amount}}{{end}}{{if .Note}} &middot; {{.Note}}{{end}}</span>
+      <button type="button" class="danger"
+        hx-post="/habits/{{$.Status.ID}}/day/logs/{{.ID}}/delete"
+        hx-vals='{"date": "{{$.Date}}", "month": "{{$.Month}}"}'
+        hx-target="#day-detail" hx-swap="innerHTML">Remove</button>
+    </li>
+    {{end}}
+  </ul>
+  {{else}}
+  <p class="meta">No activity logged.</p>
+  {{end}}
+
+  <button type="button" class="{{if .Status.Complete}}done{{end}}"
+    hx-post="/habits/{{.Status.ID}}/day"
+    hx-vals='{"date": "{{.Date}}", "month": "{{.Month}}"}'
+    hx-target="#day-detail" hx-swap="innerHTML">
+    {{if eq .Status.Type "boolean"}}{{if .Status.Complete}}Undo{{else}}Mark done{{end}}{{else}}+1{{end}}
+  </button>
+</div>
+
+{{if .CardStats.Habit}}
+<div class="card" id="habit-cal-{{.CardStats.Habit.ID}}" hx-swap-oob="true">
+  {{template "habit_calendar_card_body" .CardStats}}
+</div>
+{{end}}
+{{end}}

@@ -90,6 +90,10 @@ func (s *Server) Routes() http.Handler {
 	authed.HandleFunc("GET /dashboard", s.handleDashboard)
 	authed.HandleFunc("GET /dashboard/partial", s.handleDashboardPartial)
 
+	authed.HandleFunc("GET /habits/{id}/day", s.handleHabitDay)
+	authed.HandleFunc("POST /habits/{id}/day", s.handleHabitDayLog)
+	authed.HandleFunc("POST /habits/{id}/day/logs/{logID}/delete", s.handleHabitDayLogDelete)
+
 	authed.HandleFunc("POST /push/subscribe", s.handlePushSubscribe)
 	authed.HandleFunc("POST /push/unsubscribe", s.handlePushUnsubscribe)
 

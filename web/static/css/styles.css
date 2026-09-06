@@ -180,10 +180,28 @@ form .field { margin-bottom: var(--gap); }
   border-radius: var(--radius);
   border: 1px solid var(--border);
   font-size: 0.8rem;
+  background: transparent;
+  color: var(--text);
+  padding: 0;
+  min-height: 0;
 }
 .calendar-day.out-month { color: var(--text-dim); border-color: transparent; opacity: 0.4; }
 .calendar-day.complete { background: var(--accent); color: var(--accent-contrast); border-color: var(--accent); }
 .calendar-day.today { box-shadow: 0 0 0 2px var(--accent); }
+.calendar-day:hover { border-color: var(--accent); }
+
+.day-detail { position: relative; }
+.day-detail-close { position: absolute; top: 1rem; right: 1rem; padding: 0.3rem 0.6rem; min-height: auto; }
+.day-detail-logs { list-style: none; padding: 0; margin: 0.5rem 0; }
+.day-detail-logs li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap);
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.day-detail-logs button.danger { padding: 0.3rem 0.6rem; min-height: auto; }
 
 @media (min-width: 720px) {
   .container { max-width: 800px; padding: 1.5rem; }

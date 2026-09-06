@@ -1,3 +1,30 @@
+{{define "habit_calendar_card_body"}}
+  <div class="name">{{.Habit.Name}}</div>
+  <div class="meta">
+    {{.CompletionPct}}% this month &middot; current streak {{.CurrentStreak}} &middot; best streak {{.BestStreak}}
+  </div>
+  <div class="calendar">
+    <div class="calendar-weekdays">
+      <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
+    </div>
+    {{range .Weeks}}
+    <div class="calendar-week">
+      {{range .}}
+      <button type="button" class="calendar-day{{if not .InMonth}} out-month{{end}}{{if .Complete}} complete{{end}}{{if .Today}} today{{end}}"
+        hx-get="/habits/{{$.Habit.ID}}/day?date={{.Date}}&month={{$.Month}}" hx-target="#day-detail" hx-swap="innerHTML"
+        title="{{.Date}}">{{.Day}}</button>
+      {{end}}
+    </div>
+    {{end}}
+  </div>
+{{end}}
+
+{{define "habit_calendar_card"}}
+<div class="card" id="habit-cal-{{.Habit.ID}}">
+  {{template "habit_calendar_card_body" .}}
+</div>
+{{end}}
+
 {{define "dashboard_stats"}}
 <div class="month-nav">
   <a class="btn secondary" hx-get="/dashboard/partial?month={{.PrevMonth}}" hx-target="#dashboard-stats" hx-swap="innerHTML">&lsaquo; Prev</a>
@@ -5,28 +32,13 @@
   <a class="btn secondary" hx-get="/dashboard/partial?month={{.NextMonth}}" hx-target="#dashboard-stats" hx-swap="innerHTML">Next &rsaquo;</a>
 </div>
 
+<div id="day-detail"></div>
+
 {{if not .Stats}}
   <div class="card"><p>No habits yet. <a href="/habits/new">Add one</a> to start tracking.</p></div>
 {{else}}
   {{range .Stats}}
-  <div class="card">
-    <div class="name">{{.Habit.Name}}</div>
-    <div class="meta">
-      {{.CompletionPct}}% this month &middot; current streak {{.CurrentStreak}} &middot; best streak {{.BestStreak}}
-    </div>
-    <div class="calendar">
-      <div class="calendar-weekdays">
-        <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
-      </div>
-      {{range .Weeks}}
-      <div class="calendar-week">
-        {{range .}}
-        <span class="calendar-day{{if not .InMonth}} out-month{{end}}{{if .Complete}} complete{{end}}{{if .Today}} today{{end}}" title="{{.Date}}">{{.Day}}</span>
-        {{end}}
-      </div>
-      {{end}}
-    </div>
-  </div>
+    {{template "habit_calendar_card" .}}
   {{end}}
 {{end}}
 {{end}}

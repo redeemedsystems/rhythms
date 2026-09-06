@@ -44,6 +44,38 @@ func AmountForDate(db *sql.DB, habitID int64, logDate string) (int, error) {
 	return int(total.Int64), nil
 }
 
+// LogsForDate returns the individual log entries for a habit on logDate,
+// oldest first, as shown in the day-detail view.
+func LogsForDate(db *sql.DB, habitID int64, logDate string) ([]HabitLog, error) {
+	rows, err := db.Query(
+		`SELECT id, habit_id, user_id, occurred_at, log_date, amount, COALESCE(note, '')
+		 FROM habit_logs WHERE habit_id = ? AND log_date = ? ORDER BY occurred_at`, habitID, logDate,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	logs := make([]HabitLog, 0)
+	for rows.Next() {
+		var l HabitLog
+		var occurredAt string
+		if err := rows.Scan(&l.ID, &l.HabitID, &l.UserID, &occurredAt, &l.LogDate, &l.Amount, &l.Note); err != nil {
+			return nil, err
+		}
+		l.OccurredAt = parseTimestamp(occurredAt)
+		logs = append(logs, l)
+	}
+	return logs, rows.Err()
+}
+
+// DeleteLog removes one log entry, scoped to habitID so a habit's owner can
+// only delete entries belonging to that habit.
+func DeleteLog(db *sql.DB, logID, habitID int64) error {
+	_, err := db.Exec(`DELETE FROM habit_logs WHERE id = ? AND habit_id = ?`, logID, habitID)
+	return err
+}
+
 // CompletionByDate returns, for each log_date with any activity for the
 // habit, the total amount logged that day.
 func CompletionByDate(db *sql.DB, habitID int64, from, to string) (map[string]int, error) {
