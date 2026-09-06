@@ -42,6 +42,7 @@ func (s *Server) Routes() http.Handler {
 
 	mux.HandleFunc("GET /habits/new", s.handleHabitNewForm)
 	mux.HandleFunc("POST /habits", s.handleHabitCreate)
+	mux.HandleFunc("GET /habits/{id}", s.handleHabitDetail)
 	mux.HandleFunc("GET /habits/{id}/edit", s.handleHabitEditForm)
 	mux.HandleFunc("POST /habits/{id}", s.handleHabitUpdate)
 	mux.HandleFunc("POST /habits/{id}/archive", s.handleHabitArchiveToggle)

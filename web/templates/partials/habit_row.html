@@ -15,7 +15,7 @@
     {{end}}
 
     <div class="habit-info">
-        <a href="/habits/{{.ID}}/edit" class="habit-name">{{.Name}}</a>
+        <a href="/habits/{{.ID}}" class="habit-name">{{.Name}}</a>
         {{if .Question}}<div class="habit-question">{{.Question}}</div>{{end}}
         <div class="habit-meta">
             {{if .CurrentStreak}}<span class="streak-badge">&#128293; {{.CurrentStreak}}</span>{{end}}
@@ -43,6 +43,7 @@
     </div>
 
     <div class="habit-actions">
+        <a href="/habits/{{.ID}}/edit" class="btn-link">Edit</a>
         <form hx-post="/habits/{{.ID}}/archive{{.ListFilterQuery}}" hx-target="#habit-list" hx-swap="innerHTML">
             <button type="submit" class="btn-link">{{if .Archived}}Unarchive{{else}}Archive{{end}}</button>
         </form>

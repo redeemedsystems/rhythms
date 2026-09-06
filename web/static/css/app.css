@@ -272,3 +272,45 @@ input[type="number"] {
 
 .habit-row.dragging { opacity: 0.5; }
 .habit-row-sortable-ghost { background: var(--border); }
+
+.back-link {
+    display: inline-block;
+    font-size: 0.85rem;
+    color: var(--muted);
+    text-decoration: none;
+    margin-bottom: 0.5rem;
+}
+
+.page-header h1 {
+    margin: 0;
+    border-left: 5px solid var(--habit-color, var(--border));
+    padding-left: 0.6rem;
+}
+
+.habit-description { color: var(--muted); font-size: 0.9rem; max-width: 40rem; }
+
+.detail-stats {
+    display: flex;
+    gap: 0.75rem;
+    margin: 1.25rem 0;
+}
+
+.stat-tile {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    border-radius: 8px;
+    padding: 0.75rem 1.25rem;
+    text-align: center;
+}
+
+.stat-value { font-size: 1.5rem; font-weight: 700; }
+.stat-label { font-size: 0.75rem; color: var(--muted); }
+
+.detail-section { margin: 1.75rem 0; }
+.detail-section h2 { font-size: 1rem; margin: 0 0 0.5rem; }
+
+.chart-container { max-width: 100%; overflow-x: auto; }
+.chart-container-scroll { padding-bottom: 0.25rem; }
+
+.chart { display: block; max-width: 100%; height: auto; color: var(--fg); }
+.chart-heatmap { height: auto; max-width: none; }

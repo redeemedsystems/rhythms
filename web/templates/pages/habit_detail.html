@@ -1,0 +1,44 @@
+{{define "page_habit_detail"}}
+<div class="page-header">
+    <div>
+        <a href="/" class="back-link">&larr; All habits</a>
+        <h1 style="--habit-color: {{.Color}}">{{.Name}}</h1>
+        {{if .Question}}<p class="habit-question">{{.Question}}</p>{{end}}
+        {{if .Description}}<p class="habit-description">{{.Description}}</p>{{end}}
+    </div>
+    <div class="page-actions">
+        <a href="/habits/{{.ID}}/edit" class="btn">Edit</a>
+    </div>
+</div>
+
+<div class="detail-stats">
+    <div class="stat-tile">
+        <div class="stat-value">{{.CurrentStreak}}</div>
+        <div class="stat-label">current streak</div>
+    </div>
+    <div class="stat-tile">
+        <div class="stat-value">{{.ScorePercent}}%</div>
+        <div class="stat-label">score</div>
+    </div>
+</div>
+
+<section class="detail-section">
+    <h2>Score</h2>
+    <div class="chart-container">{{.ScoreChart}}</div>
+</section>
+
+<section class="detail-section">
+    <h2>Best streaks</h2>
+    <div class="chart-container">{{.StreakChart}}</div>
+</section>
+
+<section class="detail-section">
+    <h2>History</h2>
+    <div class="chart-container chart-container-scroll">{{.HeatmapChart}}</div>
+</section>
+
+<section class="detail-section">
+    <h2>By day of week</h2>
+    <div class="chart-container">{{.WeekdayChart}}</div>
+</section>
+{{end}}
