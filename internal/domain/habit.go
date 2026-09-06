@@ -1,5 +1,13 @@
+// Package domain holds the app's pure habit-tracking logic: the Habit and
+// Entry model, and the frequency/streak/score algorithms ported from
+// uHabits. Nothing here does I/O — it has no dependency on database/sql,
+// net/http, or any other package in this module — which is what makes the
+// highest-risk logic (interval-snapping, streaks, scoring) unit-testable in
+// isolation. internal/store implements the repo interfaces declared here
+// (see ports.go); internal/web and internal/reminder consume both.
 package domain
 
+// HabitType distinguishes a checkbox habit from one tracked by a number.
 type HabitType string
 
 const (
@@ -7,6 +15,9 @@ const (
 	Numerical HabitType = "NUMERICAL"
 )
 
+// TargetType says which direction a numeric habit's target counts:
+// AtLeast for "do at least this much" (e.g. glasses of water), AtMost for
+// "stay at or under this much" (e.g. cigarettes).
 type TargetType string
 
 const (

@@ -6,6 +6,8 @@ import (
 	"strconv"
 )
 
+// Config is the app's full runtime configuration, loaded once at startup
+// from environment variables via Load — there's no config file.
 type Config struct {
 	Addr          string
 	DBPath        string
@@ -25,6 +27,8 @@ type Config struct {
 	VAPIDSubject string
 }
 
+// Load reads Config from environment variables, applying defaults for any
+// that are unset.
 func Load() Config {
 	return Config{
 		Addr:          envOr("RHYTHMS_ADDR", ":8080"),

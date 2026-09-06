@@ -1,3 +1,8 @@
+// Package store is the SQLite-backed persistence layer: one repo type per
+// domain concept (habits, entries, reminders, push subscriptions, settings),
+// each implementing the corresponding interface from internal/domain so
+// internal/web and internal/reminder depend only on those interfaces, never
+// on this package's concrete types or on database/sql directly.
 package store
 
 import (

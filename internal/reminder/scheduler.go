@@ -19,6 +19,9 @@ type Sender interface {
 	Send(ctx context.Context, sub domain.PushSubscription, payload []byte) (statusCode int, err error)
 }
 
+// Scheduler polls for due habit reminders and pushes notifications for
+// them. Construct with NewScheduler; run it with Run (or drive it
+// tick-by-tick with Tick, as tests do).
 type Scheduler struct {
 	Habits        domain.HabitRepo
 	Entries       domain.EntryRepo

@@ -1,3 +1,8 @@
+// Package web is the HTTP layer: routing, handlers, and html/template
+// rendering. Handlers only orchestrate — they load data through the
+// internal/domain repo interfaces, call domain functions for any actual
+// logic (streaks, scores, the checkmark click-cycle), and render a
+// viewmodel. No algorithmic logic lives here.
 package web
 
 import (
@@ -14,6 +19,9 @@ import (
 	webassets "rhythms/web"
 )
 
+// Server holds every dependency an HTTP handler might need: the repo
+// interfaces for each domain concept, the parsed template set, and
+// deployment config.
 type Server struct {
 	cfg            config.Config
 	db             *sql.DB

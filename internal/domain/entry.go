@@ -14,6 +14,9 @@ const (
 	Skip      EntryValue = 3
 )
 
+// Entry is one habit's record for one calendar day. Value is meaningful for
+// boolean habits, NumericValue for numeric ones — which field to read
+// depends on the owning Habit's Type (see IsCompleted).
 type Entry struct {
 	HabitID      int64
 	Date         Date

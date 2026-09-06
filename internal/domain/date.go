@@ -20,6 +20,8 @@ func Today() Date {
 	return NewDate(now.Year(), now.Month(), now.Day())
 }
 
+// ParseDate parses a date in "YYYY-MM-DD" form, the format used throughout
+// this app for stored dates and URL path segments.
 func ParseDate(s string) (Date, error) {
 	t, err := time.Parse(dateLayout, s)
 	if err != nil {

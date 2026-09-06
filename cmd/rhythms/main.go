@@ -3,6 +3,8 @@ package main
 
 import (
 	"context"
+	"errors"
+	"flag"
 	"log/slog"
 	"net/http"
 	"os"
@@ -26,7 +28,9 @@ var (
 )
 
 func main() {
-	if len(os.Args) > 1 && (os.Args[1] == "-version" || os.Args[1] == "--version") {
+	showVersion := flag.Bool("version", false, "print version information and exit")
+	flag.Parse()
+	if *showVersion {
 		slog.Info("rhythms", "version", version, "commit", commit)
 		return
 	}
@@ -76,7 +80,7 @@ func main() {
 	}()
 
 	slog.Info("rhythms starting", "version", version, "addr", cfg.Addr, "db_path", cfg.DBPath, "auth_enabled", cfg.AuthEnabled())
-	if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+	if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		slog.Error("server exited", "error", err)
 		os.Exit(1)
 	}

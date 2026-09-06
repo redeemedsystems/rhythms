@@ -2,8 +2,11 @@ package domain
 
 import "context"
 
-// HabitRepo and EntryRepo are implemented by internal/store and consumed by
-// internal/web, so handlers can be tested against fakes without a real DB.
+// HabitRepo persists Habit records: CRUD, archive/unarchive, and reorder.
+// Implemented by internal/store, consumed by internal/web — repos in this
+// file exist so handlers (and the reminder scheduler) can be tested against
+// fakes without a real database; see internal/web/fakes_test.go and
+// internal/reminder/scheduler_test.go.
 type HabitRepo interface {
 	List(ctx context.Context, includeArchived bool) ([]Habit, error)
 	Get(ctx context.Context, id int64) (Habit, error)
@@ -17,6 +20,7 @@ type HabitRepo interface {
 	Reorder(ctx context.Context, orderedIDs []int64) error
 }
 
+// EntryRepo persists per-day Entry records for habits.
 type EntryRepo interface {
 	// ListAll returns every known entry for a habit, oldest first. Required
 	// by ComputeEntries, which needs the habit's entire history to build
