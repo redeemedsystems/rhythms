@@ -1,0 +1,48 @@
+version: 2
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: rhythms
+    main: ./cmd/rhythms
+    binary: rhythms
+    env:
+      # modernc.org/sqlite is pure Go, so every target below cross-compiles
+      # without a C toolchain.
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}}
+
+archives:
+  - id: rhythms
+    formats: [tar.gz]
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    files:
+      - README.md
+      - deploy/rhythms.service
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^test:"
+      - "^chore:"
+
+release:
+  # This repo has no git remote yet, so goreleaser can't infer where a
+  # release would even go — `goreleaser check`/`release` fail without this.
+  # Once you've pushed to a real GitHub (or other) remote, delete this
+  # `disable: true` line and goreleaser will infer owner/name from it.
+  disable: true

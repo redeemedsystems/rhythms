@@ -1,0 +1,18 @@
+services:
+  rhythms:
+    build: .
+    # Or, once images are published: image: ghcr.io/<you>/rhythms:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - rhythms-data:/data
+    environment:
+      RHYTHMS_ADDR: ":8080"
+      RHYTHMS_DB_PATH: "/data/rhythms.db"
+      # RHYTHMS_BASIC_AUTH_USER: "youruser"
+      # RHYTHMS_BASIC_AUTH_PASS: "change-me"
+      # RHYTHMS_VAPID_SUBJECT: "mailto:you@example.com"
+    restart: unless-stopped
+
+volumes:
+  rhythms-data:

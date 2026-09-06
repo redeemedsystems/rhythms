@@ -1,0 +1,41 @@
+# Example systemd unit for running rhythms directly on a Linux host
+# (skip this if you're using the Dockerfile instead).
+#
+# Install:
+#   sudo useradd --system --home-dir /var/lib/rhythms --create-home rhythms
+#   sudo cp bin/rhythms /usr/local/bin/rhythms
+#   sudo cp deploy/rhythms.service /etc/systemd/system/rhythms.service
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now rhythms
+#
+# Logs: journalctl -u rhythms -f
+
+[Unit]
+Description=Rhythms habit tracker
+After=network.target
+
+[Service]
+Type=simple
+User=rhythms
+Group=rhythms
+WorkingDirectory=/var/lib/rhythms
+Environment=RHYTHMS_ADDR=:8080
+Environment=RHYTHMS_DB_PATH=/var/lib/rhythms/rhythms.db
+# Uncomment to require a login for every route (recommended if this host
+# is reachable beyond your own LAN):
+# Environment=RHYTHMS_BASIC_AUTH_USER=youruser
+# Environment=RHYTHMS_BASIC_AUTH_PASS=change-me
+ExecStart=/usr/local/bin/rhythms
+Restart=on-failure
+RestartSec=2
+
+# Sandboxing — rhythms only ever needs to read its own binary and read/write
+# its own data directory.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/rhythms
+
+[Install]
+WantedBy=multi-user.target

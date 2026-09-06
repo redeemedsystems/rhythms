@@ -18,7 +18,19 @@ import (
 
 const shutdownTimeout = 5 * time.Second
 
+// version and commit are set via -ldflags at release build time (see
+// .goreleaser.yaml); "dev" when built directly with `go build`/`make build`.
+var (
+	version = "dev"
+	commit  = "unknown"
+)
+
 func main() {
+	if len(os.Args) > 1 && (os.Args[1] == "-version" || os.Args[1] == "--version") {
+		slog.Info("rhythms", "version", version, "commit", commit)
+		return
+	}
+
 	cfg := config.Load()
 
 	db, err := store.Open(cfg.DBPath)
@@ -63,7 +75,7 @@ func main() {
 		httpServer.Shutdown(shutdownCtx)
 	}()
 
-	slog.Info("rhythms starting", "addr", cfg.Addr, "db_path", cfg.DBPath, "auth_enabled", cfg.AuthEnabled())
+	slog.Info("rhythms starting", "version", version, "addr", cfg.Addr, "db_path", cfg.DBPath, "auth_enabled", cfg.AuthEnabled())
 	if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		slog.Error("server exited", "error", err)
 		os.Exit(1)
