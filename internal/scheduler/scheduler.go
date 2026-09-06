@@ -35,6 +35,7 @@ func (s *Scheduler) Run(ctx context.Context) {
 			return
 		case now := <-ticker.C:
 			s.tick(now)
+			s.tickDigest(now)
 		}
 	}
 }
@@ -67,5 +68,31 @@ func (s *Scheduler) tick(now time.Time) {
 		}
 
 		s.notifyUser(user.ID, h)
+	}
+}
+
+// tickDigest sends each opted-in user (users.digest_time set) a once-daily
+// summary at their configured local time, covering every active habit -
+// unlike tick above, which only ever reminds about "specific reminder
+// times" habits.
+func (s *Scheduler) tickDigest(now time.Time) {
+	users, err := store.ListUsersWithDigest(s.db)
+	if err != nil {
+		slog.Error("scheduler: list digest users", "err", err)
+		return
+	}
+
+	for _, user := range users {
+		logDate, hhmm := store.LocalClock(user.Timezone, now)
+		if user.DigestTime != hhmm {
+			continue
+		}
+
+		sent, err := store.TryMarkDigestSent(s.db, user.ID, logDate)
+		if err != nil || !sent {
+			continue
+		}
+
+		s.sendDigest(user, logDate)
 	}
 }

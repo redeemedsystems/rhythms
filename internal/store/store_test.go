@@ -180,3 +180,47 @@ func TestAppConfigRoundTrip(t *testing.T) {
 		t.Fatalf("expected v2, got %q (err=%v)", v, err)
 	}
 }
+
+func TestDigestSettingsAndDedup(t *testing.T) {
+	db := testDB(t)
+	u, _ := CreateUser(db, "digest@example.com", "hash", "UTC")
+
+	if u.DigestTime != "" {
+		t.Fatalf("expected new user to default to no digest, got %q", u.DigestTime)
+	}
+
+	users, err := ListUsersWithDigest(db)
+	if err != nil || len(users) != 0 {
+		t.Fatalf("expected no digest-opted-in users yet, got %d (err=%v)", len(users), err)
+	}
+
+	if err := UpdateDigestTime(db, u.ID, "20:00"); err != nil {
+		t.Fatalf("UpdateDigestTime: %v", err)
+	}
+
+	users, err = ListUsersWithDigest(db)
+	if err != nil || len(users) != 1 || users[0].DigestTime != "20:00" {
+		t.Fatalf("expected 1 user with digest_time 20:00, got %+v (err=%v)", users, err)
+	}
+
+	sent1, err := TryMarkDigestSent(db, u.ID, "2026-09-01")
+	if err != nil || !sent1 {
+		t.Fatalf("expected first TryMarkDigestSent to succeed, got sent=%v err=%v", sent1, err)
+	}
+	sent2, err := TryMarkDigestSent(db, u.ID, "2026-09-01")
+	if err != nil || sent2 {
+		t.Fatalf("expected second TryMarkDigestSent same day to be a no-op, got sent=%v err=%v", sent2, err)
+	}
+	sent3, err := TryMarkDigestSent(db, u.ID, "2026-09-02")
+	if err != nil || !sent3 {
+		t.Fatalf("expected TryMarkDigestSent on a new day to succeed, got sent=%v err=%v", sent3, err)
+	}
+
+	if err := UpdateDigestTime(db, u.ID, ""); err != nil {
+		t.Fatalf("UpdateDigestTime clear: %v", err)
+	}
+	users, err = ListUsersWithDigest(db)
+	if err != nil || len(users) != 0 {
+		t.Fatalf("expected clearing digest_time to remove user from the list, got %d (err=%v)", len(users), err)
+	}
+}

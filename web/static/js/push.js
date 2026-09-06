@@ -52,3 +52,42 @@ async function disablePushNotifications() {
 
   document.dispatchEvent(new CustomEvent("rhythms:push-disabled"));
 }
+
+// Wires the #push-toggle-btn on /settings to enablePushNotifications() /
+// disablePushNotifications() above, and reflects the true subscription
+// state on load so the button doesn't lie after a refresh. A no-op on any
+// page without that button (the script is loaded globally).
+async function initPushToggle() {
+  const btn = document.getElementById("push-toggle-btn");
+  if (!btn) return;
+
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+    btn.textContent = "Not supported on this browser";
+    return;
+  }
+
+  const setState = (subscribed) => {
+    btn.textContent = subscribed ? "Disable notifications" : "Enable notifications";
+    btn.dataset.subscribed = subscribed ? "true" : "false";
+    btn.disabled = false;
+  };
+
+  document.addEventListener("rhythms:push-enabled", () => setState(true));
+  document.addEventListener("rhythms:push-disabled", () => setState(false));
+
+  btn.addEventListener("click", async () => {
+    btn.disabled = true;
+    if (btn.dataset.subscribed === "true") {
+      await disablePushNotifications();
+    } else {
+      await enablePushNotifications();
+    }
+    btn.disabled = false;
+  });
+
+  const reg = await navigator.serviceWorker.ready;
+  const sub = await reg.pushManager.getSubscription();
+  setState(!!sub);
+}
+
+initPushToggle();

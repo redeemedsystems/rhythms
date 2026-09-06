@@ -1,0 +1,20 @@
+{{define "content"}}
+<h2>Settings</h2>
+
+<div class="card">
+  <div class="name">Push notifications</div>
+  <p class="meta">Get a reminder on this device for habits with specific reminder times.</p>
+  <button id="push-toggle-btn" type="button" disabled>Checking…</button>
+</div>
+
+<form method="post" action="/settings" class="card">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <div class="field">
+    <label for="digest_time">Daily digest reminder (HH:MM, your local time)</label>
+    <input type="text" id="digest_time" name="digest_time" placeholder="20:00 (leave blank to disable)"
+           value="{{.DigestTime}}">
+  </div>
+  <p class="meta">Once a day at this time, get a single reminder listing any habits not yet logged - covers every habit, not just ones with their own specific reminder times.</p>
+  <button type="submit">Save</button>
+</form>
+{{end}}

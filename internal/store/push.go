@@ -68,6 +68,25 @@ func TryMarkNotified(db *sql.DB, habitID int64, logDate, timeSlot string) (bool,
 	return n > 0, nil
 }
 
+// TryMarkDigestSent records that today's digest reminder was sent for a
+// user, returning true only if this call actually inserted the row - same
+// idempotency pattern as TryMarkNotified above, keyed by user instead of
+// habit/time-slot.
+func TryMarkDigestSent(db *sql.DB, userID int64, logDate string) (bool, error) {
+	res, err := db.Exec(
+		`INSERT OR IGNORE INTO digest_log (user_id, log_date) VALUES (?, ?)`,
+		userID, logDate,
+	)
+	if err != nil {
+		return false, err
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return false, err
+	}
+	return n > 0, nil
+}
+
 func GetConfig(db *sql.DB, key string) (string, error) {
 	var value string
 	err := db.QueryRow(`SELECT value FROM app_config WHERE key = ?`, key).Scan(&value)
