@@ -26,6 +26,50 @@ func TestStreakBarChartCapsAtTenLongest(t *testing.T) {
 	}
 }
 
+func TestNumericValueLineChartEmpty(t *testing.T) {
+	got := NumericValueLineChart(nil, "#000000")
+	if !strings.Contains(string(got), "<svg") {
+		t.Errorf("expected valid svg for empty input, got %s", got)
+	}
+}
+
+func TestNumericValueLineChartSinglePoint(t *testing.T) {
+	entries := []domain.Entry{{Date: domain.NewDate(2026, 1, 1), NumericValue: 5}}
+	got := string(NumericValueLineChart(entries, "#388e3c"))
+	if !strings.Contains(got, "Not enough data yet") {
+		t.Errorf("expected the not-enough-data placeholder for a single point, got %s", got)
+	}
+}
+
+func TestNumericValueLineChartFlatSeriesDoesNotDivideByZero(t *testing.T) {
+	entries := []domain.Entry{
+		{Date: domain.NewDate(2026, 1, 1), NumericValue: 3},
+		{Date: domain.NewDate(2026, 1, 2), NumericValue: 3},
+		{Date: domain.NewDate(2026, 1, 3), NumericValue: 3},
+	}
+	got := string(NumericValueLineChart(entries, "#388e3c"))
+	if strings.Contains(got, "NaN") || strings.Contains(got, "Inf") {
+		t.Errorf("expected a finite path for a flat series, got %s", got)
+	}
+	if !strings.Contains(got, "<path") {
+		t.Errorf("expected a path for a flat series, got %s", got)
+	}
+}
+
+func TestNumericValueLineChartScalesToMinMax(t *testing.T) {
+	entries := []domain.Entry{
+		{Date: domain.NewDate(2026, 1, 1), NumericValue: 10},
+		{Date: domain.NewDate(2026, 1, 2), NumericValue: 20},
+	}
+	got := string(NumericValueLineChart(entries, "#388e3c"))
+	if !strings.Contains(got, "#388e3c") {
+		t.Errorf("expected a path using the given color, got %s", got)
+	}
+	if !strings.Contains(got, ">10<") || !strings.Contains(got, ">20<") {
+		t.Errorf("expected min/max value labels 10 and 20, got %s", got)
+	}
+}
+
 func TestCalendarHeatmapEmpty(t *testing.T) {
 	h := domain.Habit{Type: domain.YesNo}
 	got := CalendarHeatmap(h, nil, 26, "#388e3c")

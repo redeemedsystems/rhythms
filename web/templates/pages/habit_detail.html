@@ -27,6 +27,13 @@
     {{template "habit_calendar" .Calendar}}
 </section>
 
+{{if .IsNumerical}}
+<section class="detail-section">
+    <h2>Values over time</h2>
+    <div class="chart-container">{{.ValueChart}}</div>
+</section>
+{{end}}
+
 <section class="detail-section">
     <h2>Best streaks</h2>
     <div class="chart-container">{{.StreakChart}}</div>

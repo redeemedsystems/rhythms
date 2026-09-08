@@ -10,6 +10,8 @@ import (
 	"rhythms/internal/store"
 )
 
+const valueChartDays = 90
+
 type habitDetailVM struct {
 	ID            int64
 	Name          string
@@ -23,6 +25,7 @@ type habitDetailVM struct {
 
 	StreakChart  template.HTML
 	HeatmapChart template.HTML
+	ValueChart   template.HTML
 
 	Calendar calendarVM
 }
@@ -81,6 +84,20 @@ func (s *Server) handleHabitDetail(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(scoreSeries) > 0 {
 		vm.ScorePercent = int(scoreSeries[len(scoreSeries)-1].Value*100 + 0.5)
+	}
+
+	if h.Type == domain.Numerical {
+		// Built from computed (real recorded rows only), not dense — dense
+		// fills gap days with a placeholder NumericValue of 0 that would be
+		// indistinguishable from a genuinely recorded 0 on the chart.
+		windowFrom := today.AddDays(-(valueChartDays - 1))
+		var windowed []domain.Entry
+		for _, e := range computed {
+			if !e.Date.Before(windowFrom) {
+				windowed = append(windowed, e)
+			}
+		}
+		vm.ValueChart = charts.NumericValueLineChart(windowed, color)
 	}
 
 	calVM, err := s.buildCalendarVM(r.Context(), h, today.StartOfMonth())
