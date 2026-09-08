@@ -264,8 +264,12 @@ input[type="number"] {
     color: var(--muted);
 }
 
-.streak-badge, .score-badge {
+.streak-badge, .score-badge, .today-done-badge {
     white-space: nowrap;
+}
+
+.today-done-badge {
+    color: #2e7d32;
 }
 
 .numeric-value {

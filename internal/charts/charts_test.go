@@ -7,6 +7,25 @@ import (
 	"rhythms/internal/domain"
 )
 
+func TestScoreLineChartEmpty(t *testing.T) {
+	got := ScoreLineChart(nil, "#000000")
+	if !strings.Contains(string(got), "<svg") {
+		t.Errorf("expected valid svg for empty input, got %s", got)
+	}
+}
+
+func TestScoreLineChartRenders(t *testing.T) {
+	points := []domain.ScorePoint{
+		{Date: domain.NewDate(2026, 1, 1), Value: 0.2},
+		{Date: domain.NewDate(2026, 1, 2), Value: 0.5},
+		{Date: domain.NewDate(2026, 1, 3), Value: 0.9},
+	}
+	got := string(ScoreLineChart(points, "#388e3c"))
+	if !strings.Contains(got, "<path") || !strings.Contains(got, "#388e3c") {
+		t.Errorf("expected a path using the given color, got %s", got)
+	}
+}
+
 func TestStreakBarChartEmpty(t *testing.T) {
 	got := StreakBarChart(nil, "#000000")
 	if !strings.Contains(string(got), "<svg") {

@@ -15,6 +15,56 @@ const (
 	valueLinePadding = 10
 )
 
+const (
+	scoreLineWidth   = 600
+	scoreLineHeight  = 140
+	scoreLinePadding = 10
+)
+
+// ScoreLineChart renders a score history (0.0-1.0) as a simple SVG
+// polyline, ascending oldest-to-newest left to right. Used by the
+// aggregate dashboard to plot the average score across all habits over
+// time — a single habit's own score is already shown as a stat tile, so
+// this chart earns its place only at the cross-habit level.
+func ScoreLineChart(points []domain.ScorePoint, colorHex string) template.HTML {
+	if len(points) < 2 {
+		return emptyChart("chart chart-line", scoreLineWidth, scoreLineHeight, "Not enough data yet")
+	}
+
+	n := len(points)
+	innerW := float64(scoreLineWidth - 2*scoreLinePadding)
+	innerH := float64(scoreLineHeight - 2*scoreLinePadding)
+
+	var path strings.Builder
+	for i, p := range points {
+		x := float64(scoreLinePadding) + float64(i)/float64(n-1)*innerW
+		y := float64(scoreLinePadding) + (1-clamp01(p.Value))*innerH
+		cmd := "L"
+		if i == 0 {
+			cmd = "M"
+		}
+		fmt.Fprintf(&path, "%s%.1f,%.1f ", cmd, x, y)
+	}
+
+	inner := fmt.Sprintf(
+		`<line x1="%d" y1="%.1f" x2="%d" y2="%.1f" stroke="currentColor" stroke-opacity="0.15"/>`+
+			`<path d="%s" fill="none" stroke="%s" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`,
+		scoreLinePadding, float64(scoreLinePadding)+innerH/2, scoreLineWidth-scoreLinePadding, float64(scoreLinePadding)+innerH/2,
+		path.String(), colorHex,
+	)
+	return svg(scoreLineWidth, scoreLineHeight, "chart chart-line", inner)
+}
+
+func clamp01(v float64) float64 {
+	if v < 0 {
+		return 0
+	}
+	if v > 1 {
+		return 1
+	}
+	return v
+}
+
 // NumericValueLineChart renders a numeric habit's actual recorded values as
 // an SVG polyline, oldest-to-newest left to right, scaled to the observed
 // min/max in entries — unlike a 0-1 score, raw values (reps, minutes,

@@ -1,0 +1,51 @@
+{{define "page_dashboard"}}
+<div class="page-header">
+    <h1>Dashboard</h1>
+    <div class="page-actions">
+        <a href="/today" class="btn">Today</a>
+        <a href="/" class="btn">All habits</a>
+    </div>
+</div>
+
+{{if not .HasHabits}}
+<p class="today-empty">Add a <a href="/habits/new">habit</a> to see your dashboard.</p>
+{{else}}
+<div class="detail-stats">
+    <div class="stat-tile">
+        <div class="stat-value">{{.DoneToday}}/{{.TotalHabits}}</div>
+        <div class="stat-label">done today</div>
+    </div>
+    <div class="stat-tile">
+        <div class="stat-value">{{.TodayPercent}}%</div>
+        <div class="stat-label">today's completion</div>
+    </div>
+    <div class="stat-tile">
+        <div class="stat-value">{{.AverageScorePercent}}%</div>
+        <div class="stat-label">average score</div>
+    </div>
+</div>
+
+<section class="detail-section">
+    <h2>Average score over time</h2>
+    <div class="chart-container">{{.TrendChart}}</div>
+</section>
+
+<section class="detail-section">
+    <h2>Habits</h2>
+    <ul class="habit-list">
+        {{range .Habits}}
+        <li class="habit-row" style="--habit-color: {{.Color}}">
+            <div class="habit-info">
+                <a href="/habits/{{.ID}}" class="habit-name">{{.Name}}</a>
+                <div class="habit-meta">
+                    {{if .CurrentStreak}}<span class="streak-badge">&#128293; {{.CurrentStreak}}</span>{{end}}
+                    <span class="score-badge">{{.ScorePercent}}%</span>
+                    {{if .TodayCompleted}}<span class="today-done-badge">&#10003; done today</span>{{end}}
+                </div>
+            </div>
+        </li>
+        {{end}}
+    </ul>
+</section>
+{{end}}
+{{end}}
