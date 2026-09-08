@@ -1,23 +1,25 @@
 package web
 
 import (
-	"crypto/rand"
-	"encoding/base64"
 	"errors"
 	"log/slog"
 	"net/http"
-	"time"
 
 	"rhythms/internal/store"
 )
 
-const (
-	oauthStateCookieName = "rhythms_oauth_state"
-	oauthStateDuration   = 10 * time.Minute
-)
+// g_csrf_token is Google Identity Services' own convention, not something
+// this app invents: its client-side script sets this cookie on the login
+// page, and includes the same value as a form field when it posts the
+// signed-in credential to login_uri — the server comparing the two is
+// exactly the double-submit CSRF check Google's own docs specify for this
+// integration.
+const csrfCookieName = "g_csrf_token"
 
 type loginPageVM struct {
-	Error string
+	Error          string
+	GoogleClientID string
+	CallbackURL    string
 }
 
 // handleLoginPage renders the sign-in page. An already-signed-in visitor
@@ -28,47 +30,36 @@ func (s *Server) handleLoginPage(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/", http.StatusFound)
 		return
 	}
-	s.render(w, r, "page_login", loginPageVM{Error: r.URL.Query().Get("error")})
+	s.render(w, r, "page_login", loginPageVM{
+		Error:          r.URL.Query().Get("error"),
+		GoogleClientID: s.cfg.GoogleClientID,
+		CallbackURL:    s.cfg.BaseURL + "/auth/google/callback",
+	})
 }
 
-// handleGoogleLogin starts the OAuth flow: stash a random state value in a
-// short-lived cookie, then redirect to Google with the same value, so the
-// callback can confirm the response actually answers a request this
-// server made (rather than a forged redirect to the callback URL).
-func (s *Server) handleGoogleLogin(w http.ResponseWriter, r *http.Request) {
-	state, err := randomState()
-	if err != nil {
-		s.serverError(w, err)
+// handleGoogleCallback receives the POST Google Identity Services' "Sign in
+// with Google" button submits directly from the browser (login.html) once
+// someone picks an account — no server-initiated redirect to Google at
+// all, unlike the Authorization Code flow. It verifies the CSRF
+// double-submit cookie, verifies the ID token, and either activates an
+// invited user (first sign-in) or logs in an already-activated one. An
+// email with no matching User row at all — never invited — is rejected;
+// there is no open signup.
+func (s *Server) handleGoogleCallback(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "could not parse form", http.StatusBadRequest)
 		return
 	}
-	http.SetCookie(w, &http.Cookie{
-		Name:     oauthStateCookieName,
-		Value:    state,
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   s.cfg.CookieSecure(),
-		SameSite: http.SameSiteLaxMode,
-		MaxAge:   int(oauthStateDuration.Seconds()),
-	})
-	http.Redirect(w, r, s.googleAuth.AuthCodeURL(state), http.StatusFound)
-}
 
-// handleGoogleCallback completes the OAuth flow: validate the state,
-// exchange the code for the signed-in Google account's identity, and
-// either activate an invited user (first sign-in) or just log in an
-// already-activated one. An email with no matching User row at all — never
-// invited — is rejected; there is no open signup.
-func (s *Server) handleGoogleCallback(w http.ResponseWriter, r *http.Request) {
-	stateCookie, err := r.Cookie(oauthStateCookieName)
-	http.SetCookie(w, &http.Cookie{Name: oauthStateCookieName, Value: "", Path: "/", MaxAge: -1})
-	if err != nil || stateCookie.Value == "" || stateCookie.Value != r.URL.Query().Get("state") {
+	csrfCookie, err := r.Cookie(csrfCookieName)
+	if err != nil || csrfCookie.Value == "" || csrfCookie.Value != r.PostForm.Get(csrfCookieName) {
 		http.Redirect(w, r, "/login?error=state_mismatch", http.StatusFound)
 		return
 	}
 
-	identity, err := s.googleAuth.Exchange(r.Context(), r.URL.Query().Get("code"))
+	identity, err := s.googleAuth.VerifyIDToken(r.Context(), r.PostForm.Get("credential"))
 	if err != nil {
-		slog.Error("google oauth exchange failed", "error", err)
+		slog.Error("google id token verification failed", "error", err)
 		http.Redirect(w, r, "/login?error=exchange_failed", http.StatusFound)
 		return
 	}
@@ -111,12 +102,4 @@ func (s *Server) handleGoogleCallback(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 	s.clearSessionCookie(w)
 	http.Redirect(w, r, "/login", http.StatusFound)
-}
-
-func randomState() (string, error) {
-	b := make([]byte, 24)
-	if _, err := rand.Read(b); err != nil {
-		return "", err
-	}
-	return base64.RawURLEncoding.EncodeToString(b), nil
 }

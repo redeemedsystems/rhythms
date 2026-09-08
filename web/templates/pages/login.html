@@ -15,5 +15,11 @@
     <p class="form-error">That account no longer matches — contact an admin.</p>
 {{end}}
 
-<a href="/auth/google/login" class="btn btn-primary">Sign in with Google</a>
+<script src="https://accounts.google.com/gsi/client" async></script>
+<div id="g_id_onload"
+    data-client_id="{{.GoogleClientID}}"
+    data-login_uri="{{.CallbackURL}}"
+    data-ux_mode="redirect">
+</div>
+<div class="g_id_signin" data-type="standard"></div>
 {{end}}

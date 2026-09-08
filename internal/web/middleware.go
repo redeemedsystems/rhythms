@@ -21,7 +21,7 @@ const userContextKey contextKey = iota
 // CSS the login page itself needs to load).
 func isPublicPath(path string) bool {
 	switch path {
-	case "/login", "/auth/google/login", "/auth/google/callback", "/logout",
+	case "/login", "/auth/google/callback", "/logout",
 		"/healthz", "/manifest.webmanifest", "/sw.js":
 		return true
 	}

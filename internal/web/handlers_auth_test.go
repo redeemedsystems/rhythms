@@ -5,37 +5,37 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 
 	"rhythms/internal/domain"
 )
 
-// fakeGoogleAuth lets handlers_auth tests drive the OAuth callback without
-// ever making a real network call to Google.
+// fakeGoogleAuth lets handlers_auth tests drive the ID-token callback
+// without ever making a real network call to Google.
 type fakeGoogleAuth struct {
 	identity googleIdentity
 	err      error
 }
 
-func (f *fakeGoogleAuth) AuthCodeURL(state string) string {
-	return "https://accounts.google.com/fake-auth?state=" + state
-}
-
-func (f *fakeGoogleAuth) Exchange(ctx context.Context, code string) (googleIdentity, error) {
+func (f *fakeGoogleAuth) VerifyIDToken(ctx context.Context, idToken string) (googleIdentity, error) {
 	if f.err != nil {
 		return googleIdentity{}, f.err
 	}
 	return f.identity, nil
 }
 
-// callbackRequest builds a GET /auth/google/callback request carrying a
-// matching state cookie+param (as handleGoogleLogin would have set up),
-// through the full middleware chain.
-func callbackRequest(t *testing.T, s *Server, state string) *httptest.ResponseRecorder {
+// callbackRequest builds the POST /auth/google/callback request Google
+// Identity Services' button would submit: a form body with "credential"
+// (the ID token — opaque to our fake, which ignores it) and the
+// g_csrf_token double-submit field, plus a matching g_csrf_token cookie.
+func callbackRequest(t *testing.T, s *Server, csrfToken string) *httptest.ResponseRecorder {
 	t.Helper()
-	req := httptest.NewRequest(http.MethodGet, "/auth/google/callback?state="+state+"&code=fake-code", nil)
-	req.AddCookie(&http.Cookie{Name: oauthStateCookieName, Value: state})
+	form := url.Values{"credential": {"fake-id-token"}, "g_csrf_token": {csrfToken}}
+	req := httptest.NewRequest(http.MethodPost, "/auth/google/callback", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.AddCookie(&http.Cookie{Name: csrfCookieName, Value: csrfToken})
 	rec := httptest.NewRecorder()
 	s.Routes().ServeHTTP(rec, req)
 	return rec
@@ -50,7 +50,7 @@ func TestGoogleCallbackInvitedEmailSignsIn(t *testing.T) {
 	}
 	s.googleAuth = &fakeGoogleAuth{identity: googleIdentity{Email: "invited@example.com", EmailVerified: true, Sub: "google-sub-1"}}
 
-	rec := callbackRequest(t, s, "valid-state")
+	rec := callbackRequest(t, s, "matching-csrf-token")
 
 	if rec.Code != http.StatusFound || rec.Header().Get("Location") != "/" {
 		t.Fatalf("status=%d Location=%q, want 302 to /", rec.Code, rec.Header().Get("Location"))
@@ -79,7 +79,7 @@ func TestGoogleCallbackUninvitedEmailRejected(t *testing.T) {
 	s, _, _ := newTestServer(t)
 	s.googleAuth = &fakeGoogleAuth{identity: googleIdentity{Email: "stranger@example.com", EmailVerified: true, Sub: "google-sub-2"}}
 
-	rec := callbackRequest(t, s, "valid-state")
+	rec := callbackRequest(t, s, "matching-csrf-token")
 
 	if rec.Code != http.StatusFound || !strings.Contains(rec.Header().Get("Location"), "error=not_invited") {
 		t.Errorf("status=%d Location=%q, want 302 with error=not_invited", rec.Code, rec.Header().Get("Location"))
@@ -97,19 +97,21 @@ func TestGoogleCallbackUnverifiedEmailRejected(t *testing.T) {
 	users.Create(t.Context(), domain.User{Email: "unverified@example.com"})
 	s.googleAuth = &fakeGoogleAuth{identity: googleIdentity{Email: "unverified@example.com", EmailVerified: false, Sub: "google-sub-3"}}
 
-	rec := callbackRequest(t, s, "valid-state")
+	rec := callbackRequest(t, s, "matching-csrf-token")
 
 	if !strings.Contains(rec.Header().Get("Location"), "error=email_unverified") {
 		t.Errorf("Location = %q, want error=email_unverified", rec.Header().Get("Location"))
 	}
 }
 
-func TestGoogleCallbackStateMismatchRejected(t *testing.T) {
+func TestGoogleCallbackCSRFMismatchRejected(t *testing.T) {
 	s, _, _ := newTestServer(t)
 	s.googleAuth = &fakeGoogleAuth{identity: googleIdentity{Email: "invited@example.com", EmailVerified: true, Sub: "google-sub-4"}}
 
-	req := httptest.NewRequest(http.MethodGet, "/auth/google/callback?state=attacker-supplied&code=fake-code", nil)
-	req.AddCookie(&http.Cookie{Name: oauthStateCookieName, Value: "what-this-server-actually-set"})
+	form := url.Values{"credential": {"fake-id-token"}, "g_csrf_token": {"attacker-supplied"}}
+	req := httptest.NewRequest(http.MethodPost, "/auth/google/callback", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.AddCookie(&http.Cookie{Name: csrfCookieName, Value: "what-google-actually-set"})
 	rec := httptest.NewRecorder()
 	s.Routes().ServeHTTP(rec, req)
 
@@ -118,11 +120,13 @@ func TestGoogleCallbackStateMismatchRejected(t *testing.T) {
 	}
 }
 
-func TestGoogleCallbackNoStateCookieRejected(t *testing.T) {
+func TestGoogleCallbackNoCSRFCookieRejected(t *testing.T) {
 	s, _, _ := newTestServer(t)
 	s.googleAuth = &fakeGoogleAuth{identity: googleIdentity{Email: "invited@example.com", EmailVerified: true, Sub: "google-sub-5"}}
 
-	req := httptest.NewRequest(http.MethodGet, "/auth/google/callback?state=some-state&code=fake-code", nil)
+	form := url.Values{"credential": {"fake-id-token"}, "g_csrf_token": {"some-token"}}
+	req := httptest.NewRequest(http.MethodPost, "/auth/google/callback", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
 	s.Routes().ServeHTTP(rec, req)
 
@@ -131,11 +135,11 @@ func TestGoogleCallbackNoStateCookieRejected(t *testing.T) {
 	}
 }
 
-func TestGoogleCallbackExchangeFailureRejected(t *testing.T) {
+func TestGoogleCallbackVerifyFailureRejected(t *testing.T) {
 	s, _, _ := newTestServer(t)
 	s.googleAuth = &fakeGoogleAuth{err: fmt.Errorf("network error")}
 
-	rec := callbackRequest(t, s, "valid-state")
+	rec := callbackRequest(t, s, "matching-csrf-token")
 
 	if !strings.Contains(rec.Header().Get("Location"), "error=exchange_failed") {
 		t.Errorf("Location = %q, want error=exchange_failed", rec.Header().Get("Location"))

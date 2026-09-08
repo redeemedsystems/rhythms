@@ -5,9 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-
-	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
+	"net/url"
 
 	"rhythms/internal/config"
 )
@@ -21,65 +19,67 @@ type googleIdentity struct {
 	Sub           string // Google's stable, unique account id
 }
 
-// googleAuth is the seam between this app and Google's OAuth2 flow, kept
-// narrow and behind an interface specifically so handlers_auth_test.go can
-// fake a full sign-in without ever making a real network call.
+// googleAuth is the seam between this app and Google Identity Services,
+// kept narrow and behind an interface specifically so
+// handlers_auth_test.go can fake a full sign-in without ever making a real
+// network call.
 type googleAuth interface {
-	AuthCodeURL(state string) string
-	// Exchange trades an authorization code for tokens, then fetches the
-	// signed-in account's identity — combined into one call because
-	// nothing in this app ever needs the raw token by itself.
-	Exchange(ctx context.Context, code string) (googleIdentity, error)
+	// VerifyIDToken checks a signed ID-token JWT (posted straight from the
+	// browser by Google's "Sign in with Google" button — see
+	// web/templates/pages/login.html) and returns the identity it
+	// attests to, or an error if it's invalid, expired, or wasn't issued
+	// for this app.
+	VerifyIDToken(ctx context.Context, idToken string) (googleIdentity, error)
 }
 
-const googleUserInfoURL = "https://openidconnect.googleapis.com/v1/userinfo"
+// googleTokenInfoURL validates an ID token by asking Google directly,
+// rather than this app verifying the JWT signature itself against Google's
+// JWKS — Google documents this endpoint as valid for exactly this use case
+// for lower-volume apps, and it means no JWT/JWKS library at all. (Google's
+// own guidance is to prefer local signature verification at high request
+// volume; a single self-hosted habit tracker is nowhere near that.)
+const googleTokenInfoURL = "https://oauth2.googleapis.com/tokeninfo"
 
 type realGoogleAuth struct {
-	oauthCfg *oauth2.Config
+	clientID string
 }
 
 func newGoogleAuth(cfg config.Config) *realGoogleAuth {
-	return &realGoogleAuth{oauthCfg: &oauth2.Config{
-		ClientID:     cfg.GoogleClientID,
-		ClientSecret: cfg.GoogleClientSecret,
-		RedirectURL:  cfg.BaseURL + "/auth/google/callback",
-		Scopes:       []string{"openid", "email"},
-		Endpoint:     google.Endpoint,
-	}}
+	return &realGoogleAuth{clientID: cfg.GoogleClientID}
 }
 
-func (g *realGoogleAuth) AuthCodeURL(state string) string {
-	return g.oauthCfg.AuthCodeURL(state)
-}
-
-func (g *realGoogleAuth) Exchange(ctx context.Context, code string) (googleIdentity, error) {
-	token, err := g.oauthCfg.Exchange(ctx, code)
+func (g *realGoogleAuth) VerifyIDToken(ctx context.Context, idToken string) (googleIdentity, error) {
+	reqURL := googleTokenInfoURL + "?id_token=" + url.QueryEscape(idToken)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
 	if err != nil {
-		return googleIdentity{}, fmt.Errorf("exchange code: %w", err)
+		return googleIdentity{}, fmt.Errorf("build tokeninfo request: %w", err)
 	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, googleUserInfoURL, nil)
-	if err != nil {
-		return googleIdentity{}, fmt.Errorf("build userinfo request: %w", err)
-	}
-	req.Header.Set("Authorization", "Bearer "+token.AccessToken)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return googleIdentity{}, fmt.Errorf("fetch userinfo: %w", err)
+		return googleIdentity{}, fmt.Errorf("fetch tokeninfo: %w", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return googleIdentity{}, fmt.Errorf("userinfo request returned status %d", resp.StatusCode)
+		return googleIdentity{}, fmt.Errorf("tokeninfo request returned status %d (token invalid or expired)", resp.StatusCode)
 	}
 
 	var body struct {
+		Aud           string `json:"aud"`
 		Email         string `json:"email"`
-		EmailVerified bool   `json:"email_verified"`
+		EmailVerified string `json:"email_verified"` // this endpoint returns "true"/"false" as a string, not a JSON bool
 		Sub           string `json:"sub"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
-		return googleIdentity{}, fmt.Errorf("decode userinfo: %w", err)
+		return googleIdentity{}, fmt.Errorf("decode tokeninfo: %w", err)
 	}
-	return googleIdentity{Email: body.Email, EmailVerified: body.EmailVerified, Sub: body.Sub}, nil
+
+	// The audience must be this app's own client id — otherwise a token
+	// minted for some other Google-sign-in-using app could be replayed
+	// against us by anyone who obtained one.
+	if body.Aud != g.clientID {
+		return googleIdentity{}, fmt.Errorf("tokeninfo audience %q does not match this app's client id", body.Aud)
+	}
+
+	return googleIdentity{Email: body.Email, EmailVerified: body.EmailVerified == "true", Sub: body.Sub}, nil
 }

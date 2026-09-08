@@ -86,12 +86,15 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /habits/{id}/entries/{date}", s.handleEntryEditForm)
 	mux.HandleFunc("POST /habits/{id}/entries/{date}", s.handleEntryToggle)
 
-	// Auth: /login, /auth/google/*, and /logout are all in isPublicPath's
-	// allowlist (middleware.go) — requireAuth lets them through unauthenticated
-	// by design, since they're how a session gets established in the first place.
+	// Auth: /login, /auth/google/callback, and /logout are all in
+	// isPublicPath's allowlist (middleware.go) — requireAuth lets them
+	// through unauthenticated by design, since they're how a session gets
+	// established in the first place. There's no server-initiated
+	// "/auth/google/login" redirect route (unlike the Authorization Code
+	// flow) — Google Identity Services' button on login.html posts
+	// straight to the callback once someone picks an account.
 	mux.HandleFunc("GET /login", s.handleLoginPage)
-	mux.HandleFunc("GET /auth/google/login", s.handleGoogleLogin)
-	mux.HandleFunc("GET /auth/google/callback", s.handleGoogleCallback)
+	mux.HandleFunc("POST /auth/google/callback", s.handleGoogleCallback)
 	mux.HandleFunc("POST /logout", s.handleLogout)
 
 	// Admin-only. /backup lives here too, not with the other GETs above —

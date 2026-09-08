@@ -15,13 +15,18 @@ type Config struct {
 
 	// BaseURL is this deployment's own externally-reachable origin (e.g.
 	// "https://rhythms.redeemed.systems", no trailing slash) — used to
-	// build the exact OAuth redirect_uri sent to Google, which must match
-	// what's registered in the Google Cloud Console, and to decide whether
-	// the session cookie can be marked Secure.
+	// build the absolute login_uri the Google Identity Services button
+	// posts the signed-in credential back to, and to decide whether the
+	// session cookie can be marked Secure.
 	BaseURL string
 
-	GoogleClientID     string
-	GoogleClientSecret string
+	// GoogleClientID identifies this deployment to Google Identity
+	// Services (registered in the Google Cloud Console as an OAuth Client
+	// ID). No client secret is needed — the ID-token flow this app uses
+	// is a public-client flow: the browser gets a signed JWT directly
+	// from Google, and the server only verifies it, it never exchanges
+	// anything secret with Google itself.
+	GoogleClientID string
 
 	// AdminEmail is ensured to exist as an admin user on every startup
 	// (see store.UserRepo.EnsureAdmin) — the only bootstrap into an
@@ -48,12 +53,11 @@ func Load() Config {
 	return Config{
 		Addr:               envOr("RHYTHMS_ADDR", ":8080"),
 		DBPath:             envOr("RHYTHMS_DB_PATH", "rhythms.db"),
-		BaseURL:            strings.TrimSuffix(os.Getenv("RHYTHMS_BASE_URL"), "/"),
-		GoogleClientID:     os.Getenv("RHYTHMS_GOOGLE_CLIENT_ID"),
-		GoogleClientSecret: os.Getenv("RHYTHMS_GOOGLE_CLIENT_SECRET"),
-		AdminEmail:         os.Getenv("RHYTHMS_ADMIN_EMAIL"),
-		SkipEnabled:        envBoolOr("RHYTHMS_SKIP_ENABLED", true),
-		VAPIDSubject:       envOr("RHYTHMS_VAPID_SUBJECT", "mailto:admin@localhost"),
+		BaseURL:        strings.TrimSuffix(os.Getenv("RHYTHMS_BASE_URL"), "/"),
+		GoogleClientID: os.Getenv("RHYTHMS_GOOGLE_CLIENT_ID"),
+		AdminEmail:     os.Getenv("RHYTHMS_ADMIN_EMAIL"),
+		SkipEnabled:    envBoolOr("RHYTHMS_SKIP_ENABLED", true),
+		VAPIDSubject:   envOr("RHYTHMS_VAPID_SUBJECT", "mailto:admin@localhost"),
 	}
 }
 
@@ -76,9 +80,6 @@ func (c Config) Missing() []string {
 	}
 	if c.GoogleClientID == "" {
 		missing = append(missing, "RHYTHMS_GOOGLE_CLIENT_ID")
-	}
-	if c.GoogleClientSecret == "" {
-		missing = append(missing, "RHYTHMS_GOOGLE_CLIENT_SECRET")
 	}
 	if c.AdminEmail == "" {
 		missing = append(missing, "RHYTHMS_ADMIN_EMAIL")
