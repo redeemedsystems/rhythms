@@ -1,0 +1,47 @@
+{{define "page_admin_users"}}
+<div class="page-header">
+    <div>
+        <a href="/" class="back-link">&larr; All habits</a>
+        <h1>Users</h1>
+    </div>
+</div>
+
+{{if .Error}}<p class="form-error">{{.Error}}</p>{{end}}
+
+<form method="post" action="/admin/users" class="admin-invite-form">
+    <label>
+        Email
+        <input type="email" name="email" required autofocus>
+    </label>
+    <label class="admin-invite-admin-checkbox">
+        <input type="checkbox" name="is_admin">
+        Admin
+    </label>
+    <button type="submit" class="btn btn-primary">Invite</button>
+</form>
+
+<table class="admin-user-table">
+    <thead>
+        <tr>
+            <th>Email</th>
+            <th>Status</th>
+            <th>Admin</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        {{range .Users}}
+        <tr>
+            <td>{{.Email}}</td>
+            <td>{{if .GoogleSub}}Active{{else}}Invited{{end}}</td>
+            <td>{{if .IsAdmin}}Yes{{end}}</td>
+            <td>
+                <form method="post" action="/admin/users/{{.ID}}/delete">
+                    <button type="submit" class="btn-link btn-danger">Remove</button>
+                </form>
+            </td>
+        </tr>
+        {{end}}
+    </tbody>
+</table>
+{{end}}

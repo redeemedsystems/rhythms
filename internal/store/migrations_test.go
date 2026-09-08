@@ -14,7 +14,7 @@ func TestMigrate(t *testing.T) {
 	}
 	defer db.Close()
 
-	for _, table := range []string{"habits", "entries", "schema_migrations"} {
+	for _, table := range []string{"users", "habits", "entries", "schema_migrations"} {
 		var name string
 		err := db.QueryRow(`SELECT name FROM sqlite_master WHERE type='table' AND name=?`, table).Scan(&name)
 		if err != nil {
@@ -39,8 +39,14 @@ func TestHabitsEntriesConstraints(t *testing.T) {
 	}
 	defer db.Close()
 
-	res, err := db.Exec(`INSERT INTO habits (uuid, name, position, habit_type) VALUES (?, ?, ?, ?)`,
-		"uuid-1", "Meditate", 0, "YES_NO")
+	userRes, err := db.Exec(`INSERT INTO users (email) VALUES (?)`, "test@example.com")
+	if err != nil {
+		t.Fatalf("insert user: %v", err)
+	}
+	userID, _ := userRes.LastInsertId()
+
+	res, err := db.Exec(`INSERT INTO habits (user_id, uuid, name, position, habit_type) VALUES (?, ?, ?, ?, ?)`,
+		userID, "uuid-1", "Meditate", 0, "YES_NO")
 	if err != nil {
 		t.Fatalf("insert habit: %v", err)
 	}

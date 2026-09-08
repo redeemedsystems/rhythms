@@ -13,17 +13,26 @@ import (
 
 type fakeHabits struct{ habits map[int64]domain.Habit }
 
-func (f *fakeHabits) List(ctx context.Context, includeArchived bool) ([]domain.Habit, error) {
+func (f *fakeHabits) List(ctx context.Context, userID int64, includeArchived bool) ([]domain.Habit, error) {
 	return nil, nil
 }
-func (f *fakeHabits) Get(ctx context.Context, id int64) (domain.Habit, error) {
+func (f *fakeHabits) Get(ctx context.Context, userID, id int64) (domain.Habit, error) {
 	return f.habits[id], nil
 }
-func (f *fakeHabits) Create(ctx context.Context, h domain.Habit) (int64, error)      { return 0, nil }
-func (f *fakeHabits) Update(ctx context.Context, h domain.Habit) error               { return nil }
-func (f *fakeHabits) SetArchived(ctx context.Context, id int64, archived bool) error { return nil }
-func (f *fakeHabits) Delete(ctx context.Context, id int64) error                     { return nil }
-func (f *fakeHabits) Reorder(ctx context.Context, orderedIDs []int64) error          { return nil }
+func (f *fakeHabits) GetAny(ctx context.Context, id int64) (domain.Habit, error) {
+	return f.habits[id], nil
+}
+func (f *fakeHabits) Create(ctx context.Context, userID int64, h domain.Habit) (int64, error) {
+	return 0, nil
+}
+func (f *fakeHabits) Update(ctx context.Context, userID int64, h domain.Habit) error { return nil }
+func (f *fakeHabits) SetArchived(ctx context.Context, userID, id int64, archived bool) error {
+	return nil
+}
+func (f *fakeHabits) Delete(ctx context.Context, userID, id int64) error { return nil }
+func (f *fakeHabits) Reorder(ctx context.Context, userID int64, orderedIDs []int64) error {
+	return nil
+}
 
 type fakeEntries struct{ byHabit map[int64][]domain.Entry }
 
@@ -75,10 +84,17 @@ func (f *fakeReminderLog) MarkSent(ctx context.Context, habitID int64, date doma
 
 type fakeSubscriptions struct{ subs []domain.PushSubscription }
 
-func (f *fakeSubscriptions) List(ctx context.Context) ([]domain.PushSubscription, error) {
-	return f.subs, nil
+func (f *fakeSubscriptions) List(ctx context.Context, userID int64) ([]domain.PushSubscription, error) {
+	var out []domain.PushSubscription
+	for _, s := range f.subs {
+		if s.UserID == userID {
+			out = append(out, s)
+		}
+	}
+	return out, nil
 }
-func (f *fakeSubscriptions) Upsert(ctx context.Context, s domain.PushSubscription) error {
+func (f *fakeSubscriptions) Upsert(ctx context.Context, userID int64, s domain.PushSubscription) error {
+	s.UserID = userID
 	f.subs = append(f.subs, s)
 	return nil
 }
@@ -238,6 +254,25 @@ func TestTickPrunesStaleSubscriptionOn410(t *testing.T) {
 
 	if len(subs.subs) != 0 {
 		t.Errorf("expected stale subscription to be pruned, still have %d", len(subs.subs))
+	}
+}
+
+func TestTickOnlyNotifiesTheHabitOwnersSubscriptions(t *testing.T) {
+	s, habits, _, reminders, _, subs, sender := newTestScheduler(t)
+	monday900 := time.Date(2026, 9, 7, 9, 0, 0, 0, time.UTC)
+	s.Now = func() time.Time { return monday900 }
+
+	habits.habits[1] = domain.Habit{ID: 1, UserID: 1, Name: "Meditate", Type: domain.YesNo}
+	reminders.active[1] = domain.Reminder{HabitID: 1, Hour: 8, Minute: 0, WeekdayMask: domain.AllWeekdaysMask}
+	subs.subs = []domain.PushSubscription{
+		{UserID: 1, Endpoint: "https://push.example/owner"},
+		{UserID: 2, Endpoint: "https://push.example/someone-else"},
+	}
+
+	s.Tick(context.Background())
+
+	if len(sender.sent) != 1 || sender.sent[0].Endpoint != "https://push.example/owner" {
+		t.Errorf("expected exactly 1 push to the habit owner's own subscription, got %+v", sender.sent)
 	}
 }
 

@@ -41,7 +41,7 @@ func (s *Server) handleHabitDetail(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	h, err := s.habits.Get(r.Context(), id)
+	h, err := s.habits.Get(r.Context(), mustUser(r).ID, id)
 	if errors.Is(err, store.ErrNotFound) {
 		http.NotFound(w, r)
 		return
@@ -107,5 +107,5 @@ func (s *Server) handleHabitDetail(w http.ResponseWriter, r *http.Request) {
 	}
 	vm.Calendar = calVM
 
-	s.render(w, "page_habit_detail", vm)
+	s.render(w, r, "page_habit_detail", vm)
 }

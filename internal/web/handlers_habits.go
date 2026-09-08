@@ -24,7 +24,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.render(w, "page_index", vm)
+	s.render(w, r, "page_index", vm)
 }
 
 // handleHabitListPartial re-renders just the list (used after archive/delete
@@ -39,7 +39,7 @@ func (s *Server) handleHabitListPartial(w http.ResponseWriter, r *http.Request, 
 }
 
 func (s *Server) buildHabitListVM(r *http.Request, showArchived bool) (habitListVM, error) {
-	habits, err := s.habits.List(r.Context(), showArchived)
+	habits, err := s.habits.List(r.Context(), mustUser(r).ID, showArchived)
 	if err != nil {
 		return habitListVM{}, err
 	}
@@ -72,7 +72,7 @@ type habitFormVM struct {
 }
 
 func (s *Server) handleHabitNewForm(w http.ResponseWriter, r *http.Request) {
-	s.render(w, "page_habit_form", habitFormVM{
+	s.render(w, r, "page_habit_form", habitFormVM{
 		Palette:  domain.Palette[:],
 		Reminder: domain.Reminder{Hour: 8, WeekdayMask: domain.AllWeekdaysMask},
 	})
@@ -84,7 +84,7 @@ func (s *Server) handleHabitEditForm(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	h, err := s.habits.Get(r.Context(), id)
+	h, err := s.habits.Get(r.Context(), mustUser(r).ID, id)
 	if errors.Is(err, store.ErrNotFound) {
 		http.NotFound(w, r)
 		return
@@ -103,7 +103,7 @@ func (s *Server) handleHabitEditForm(w http.ResponseWriter, r *http.Request) {
 		rem = domain.Reminder{Hour: 8, WeekdayMask: domain.AllWeekdaysMask}
 	}
 
-	s.render(w, "page_habit_form", habitFormVM{IsEdit: true, Habit: h, Palette: domain.Palette[:], ReminderEnabled: ok, Reminder: rem})
+	s.render(w, r, "page_habit_form", habitFormVM{IsEdit: true, Habit: h, Palette: domain.Palette[:], ReminderEnabled: ok, Reminder: rem})
 }
 
 func (s *Server) handleHabitCreate(w http.ResponseWriter, r *http.Request) {
@@ -115,7 +115,7 @@ func (s *Server) handleHabitCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id, err := s.habits.Create(r.Context(), h)
+	id, err := s.habits.Create(r.Context(), mustUser(r).ID, h)
 	if err != nil {
 		s.serverError(w, err)
 		return
@@ -134,8 +134,9 @@ func (s *Server) handleHabitUpdate(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	userID := mustUser(r).ID
 
-	if _, err := s.habits.Get(r.Context(), id); errors.Is(err, store.ErrNotFound) {
+	if _, err := s.habits.Get(r.Context(), userID, id); errors.Is(err, store.ErrNotFound) {
 		http.NotFound(w, r)
 		return
 	} else if err != nil {
@@ -152,7 +153,7 @@ func (s *Server) handleHabitUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := s.habits.Update(r.Context(), h); err != nil {
+	if err := s.habits.Update(r.Context(), userID, h); err != nil {
 		s.serverError(w, err)
 		return
 	}
@@ -181,7 +182,7 @@ func (s *Server) handleHabitReorder(w http.ResponseWriter, r *http.Request) {
 		}
 		ids = append(ids, id)
 	}
-	if err := s.habits.Reorder(r.Context(), ids); err != nil {
+	if err := s.habits.Reorder(r.Context(), mustUser(r).ID, ids); err != nil {
 		s.serverError(w, err)
 		return
 	}
@@ -194,7 +195,8 @@ func (s *Server) handleHabitArchiveToggle(w http.ResponseWriter, r *http.Request
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	h, err := s.habits.Get(r.Context(), id)
+	userID := mustUser(r).ID
+	h, err := s.habits.Get(r.Context(), userID, id)
 	if errors.Is(err, store.ErrNotFound) {
 		http.NotFound(w, r)
 		return
@@ -203,7 +205,7 @@ func (s *Server) handleHabitArchiveToggle(w http.ResponseWriter, r *http.Request
 		s.serverError(w, err)
 		return
 	}
-	if err := s.habits.SetArchived(r.Context(), id, !h.Archived); err != nil {
+	if err := s.habits.SetArchived(r.Context(), userID, id, !h.Archived); err != nil {
 		s.serverError(w, err)
 		return
 	}
@@ -219,7 +221,7 @@ func (s *Server) handleHabitDelete(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	if err := s.habits.Delete(r.Context(), id); err != nil && !errors.Is(err, store.ErrNotFound) {
+	if err := s.habits.Delete(r.Context(), mustUser(r).ID, id); err != nil && !errors.Is(err, store.ErrNotFound) {
 		s.serverError(w, err)
 		return
 	}

@@ -16,7 +16,11 @@ func TestReminderRepoSetGetDelete(t *testing.T) {
 	}
 	defer db.Close()
 
-	habitID, err := NewHabitRepo(db).Create(ctx, domain.Habit{Name: "Meditate"})
+	userID, err := NewUserRepo(db).Create(ctx, domain.User{Email: "test@example.com"})
+	if err != nil {
+		t.Fatalf("seed user: %v", err)
+	}
+	habitID, err := NewHabitRepo(db).Create(ctx, userID, domain.Habit{Name: "Meditate"})
 	if err != nil {
 		t.Fatalf("Create habit: %v", err)
 	}
@@ -71,7 +75,11 @@ func TestReminderCascadeDeletesWithHabit(t *testing.T) {
 	}
 	defer db.Close()
 
-	habitID, err := NewHabitRepo(db).Create(ctx, domain.Habit{Name: "Temp"})
+	userID, err := NewUserRepo(db).Create(ctx, domain.User{Email: "test@example.com"})
+	if err != nil {
+		t.Fatalf("seed user: %v", err)
+	}
+	habitID, err := NewHabitRepo(db).Create(ctx, userID, domain.Habit{Name: "Temp"})
 	if err != nil {
 		t.Fatalf("Create habit: %v", err)
 	}
@@ -80,7 +88,7 @@ func TestReminderCascadeDeletesWithHabit(t *testing.T) {
 		t.Fatalf("Set: %v", err)
 	}
 
-	if err := NewHabitRepo(db).Delete(ctx, habitID); err != nil {
+	if err := NewHabitRepo(db).Delete(ctx, userID, habitID); err != nil {
 		t.Fatalf("Delete habit: %v", err)
 	}
 

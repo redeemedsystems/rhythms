@@ -118,7 +118,7 @@ func (s *Server) handleHabitCalendar(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	h, err := s.habits.Get(r.Context(), id)
+	h, err := s.habits.Get(r.Context(), mustUser(r).ID, id)
 	if errors.Is(err, store.ErrNotFound) {
 		http.NotFound(w, r)
 		return

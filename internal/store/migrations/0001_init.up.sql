@@ -1,7 +1,22 @@
 PRAGMA foreign_keys = ON;
 
+-- google_sub is '' for an invited-but-not-yet-signed-in user (an admin
+-- creates the row; the invited email's first successful Google sign-in
+-- fills this in) — the partial unique index below only enforces uniqueness
+-- once it's actually set, so multiple pending invites don't collide on ''.
+CREATE TABLE users (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    email       TEXT NOT NULL UNIQUE,
+    google_sub  TEXT NOT NULL DEFAULT '',
+    is_admin    INTEGER NOT NULL DEFAULT 0,
+    created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+
+CREATE UNIQUE INDEX idx_users_google_sub ON users(google_sub) WHERE google_sub != '';
+
 CREATE TABLE habits (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     uuid            TEXT NOT NULL UNIQUE,
     name            TEXT NOT NULL,
     question        TEXT NOT NULL DEFAULT '',
@@ -20,6 +35,7 @@ CREATE TABLE habits (
 
 CREATE INDEX idx_habits_position ON habits(position);
 CREATE INDEX idx_habits_archived ON habits(archived);
+CREATE INDEX idx_habits_user_id ON habits(user_id);
 
 CREATE TABLE entries (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,

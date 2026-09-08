@@ -29,6 +29,9 @@ type Server struct {
 	entries        domain.EntryRepo
 	reminders      domain.ReminderRepo
 	pushSubs       domain.PushSubscriptionRepo
+	users          domain.UserRepo
+	sessionSecret  []byte
+	googleAuth     googleAuth
 	vapidPublicKey string
 	tmpl           *template.Template
 }
@@ -39,7 +42,7 @@ var templateFuncs = template.FuncMap{
 	"hasWeekdayBit": func(mask, bit int) bool { return mask&(1<<bit) != 0 },
 }
 
-func NewServer(cfg config.Config, db *sql.DB, vapidPublicKey string) (*Server, error) {
+func NewServer(cfg config.Config, db *sql.DB, vapidPublicKey string, sessionSecret []byte) (*Server, error) {
 	tmpl, err := template.New("").Funcs(templateFuncs).ParseFS(webassets.TemplatesFS, "templates/*.html", "templates/pages/*.html", "templates/partials/*.html")
 	if err != nil {
 		return nil, err
@@ -51,6 +54,9 @@ func NewServer(cfg config.Config, db *sql.DB, vapidPublicKey string) (*Server, e
 		entries:        store.NewEntryRepo(db),
 		reminders:      store.NewReminderRepo(db),
 		pushSubs:       store.NewPushSubscriptionRepo(db),
+		users:          store.NewUserRepo(db),
+		sessionSecret:  sessionSecret,
+		googleAuth:     newGoogleAuth(cfg),
 		vapidPublicKey: vapidPublicKey,
 		tmpl:           tmpl,
 	}, nil
@@ -62,7 +68,6 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /healthz", s.handleHealthz)
 	mux.HandleFunc("GET /{$}", s.handleIndex)
 	mux.HandleFunc("GET /today", s.handleToday)
-	mux.HandleFunc("GET /backup", s.handleBackup)
 	mux.HandleFunc("GET /manifest.webmanifest", s.handleManifest)
 	mux.HandleFunc("GET /sw.js", s.handleServiceWorker)
 	mux.HandleFunc("POST /push/subscribe", s.handlePushSubscribe)
@@ -81,6 +86,23 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /habits/{id}/entries/{date}", s.handleEntryEditForm)
 	mux.HandleFunc("POST /habits/{id}/entries/{date}", s.handleEntryToggle)
 
+	// Auth: /login, /auth/google/*, and /logout are all in isPublicPath's
+	// allowlist (middleware.go) — requireAuth lets them through unauthenticated
+	// by design, since they're how a session gets established in the first place.
+	mux.HandleFunc("GET /login", s.handleLoginPage)
+	mux.HandleFunc("GET /auth/google/login", s.handleGoogleLogin)
+	mux.HandleFunc("GET /auth/google/callback", s.handleGoogleCallback)
+	mux.HandleFunc("POST /logout", s.handleLogout)
+
+	// Admin-only. /backup lives here too, not with the other GETs above —
+	// it's a full raw-database dump (every user's data, no per-habit
+	// scoping is even possible), so under multi-tenancy it must never be
+	// reachable by an ordinary signed-in user.
+	mux.Handle("GET /admin/users", requireAdmin(http.HandlerFunc(s.handleAdminUsers)))
+	mux.Handle("POST /admin/users", requireAdmin(http.HandlerFunc(s.handleAdminUserCreate)))
+	mux.Handle("POST /admin/users/{id}/delete", requireAdmin(http.HandlerFunc(s.handleAdminUserDelete)))
+	mux.Handle("GET /backup", requireAdmin(http.HandlerFunc(s.handleBackup)))
+
 	staticFS, err := fs.Sub(webassets.StaticFS, "static")
 	if err != nil {
 		panic(err) // programmer error: embed FS is malformed
@@ -88,7 +110,7 @@ func (s *Server) Routes() http.Handler {
 	mux.Handle("GET /static/", cacheStatic(http.StripPrefix("/static/", http.FileServerFS(staticFS))))
 
 	var handler http.Handler = mux
-	handler = basicAuth(s.cfg.BasicAuthUser, s.cfg.BasicAuthPass, handler)
+	handler = s.requireAuth(handler)
 	handler = logging(handler)
 	handler = recoverer(handler)
 	return handler
@@ -102,18 +124,26 @@ func (s *Server) handleHealthz(w http.ResponseWriter, r *http.Request) {
 type layoutData struct {
 	Body           template.HTML
 	VapidPublicKey string
+	User           *domain.User
 }
 
 // render executes the named page-body template into a buffer, then wraps it
 // in the shared layout. Keeping pages out of the layout's own template
 // namespace avoids the {{define "content"}} collision described in layout.html.
-func (s *Server) render(w http.ResponseWriter, pageTemplate string, data any) {
+// Takes r (rather than just a *domain.User) so callers can't forget to
+// thread the current user through — it's always exactly whatever requireAuth
+// already resolved for this request.
+func (s *Server) render(w http.ResponseWriter, r *http.Request, pageTemplate string, data any) {
 	var body bytes.Buffer
 	if err := s.tmpl.ExecuteTemplate(&body, pageTemplate, data); err != nil {
 		s.serverError(w, err)
 		return
 	}
-	if err := s.tmpl.ExecuteTemplate(w, "layout", layoutData{Body: template.HTML(body.String()), VapidPublicKey: s.vapidPublicKey}); err != nil {
+	if err := s.tmpl.ExecuteTemplate(w, "layout", layoutData{
+		Body:           template.HTML(body.String()),
+		VapidPublicKey: s.vapidPublicKey,
+		User:           userFromContext(r.Context()),
+	}); err != nil {
 		s.serverError(w, err)
 	}
 }

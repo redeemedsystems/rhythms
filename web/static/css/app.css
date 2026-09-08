@@ -35,6 +35,21 @@ body {
 
 a { color: inherit; }
 
+.top-nav {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 1rem;
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 0.6rem 1rem 0;
+    font-size: 0.85rem;
+}
+
+.top-nav-email { color: var(--muted); margin-right: auto; overflow-wrap: anywhere; }
+
+.top-nav form { display: inline; }
+
 .page-header {
     display: flex;
     align-items: center;
@@ -446,3 +461,21 @@ form:not(:has(input[name="reminder_enabled"]:checked)) .reminder-fields {
 }
 
 .calendar-grid .numeric-entry-form .btn-primary { font-size: 0.7rem; padding: 0.15rem 0.3rem; }
+
+.admin-invite-form {
+    display: flex;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 0.75rem 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.admin-invite-admin-checkbox { flex-direction: row-reverse; align-items: center; gap: 0.35rem; }
+
+.admin-user-table { width: 100%; border-collapse: collapse; }
+
+.admin-user-table th, .admin-user-table td {
+    text-align: left;
+    padding: 0.5rem;
+    border-bottom: 1px solid var(--border);
+}

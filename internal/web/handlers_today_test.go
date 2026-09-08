@@ -10,8 +10,8 @@ import (
 
 func TestHandleTodayHidesCompletedHabits(t *testing.T) {
 	s, habits, entries := newTestServer(t)
-	doneID, _ := habits.Create(t.Context(), domain.Habit{Name: "Done today"})
-	pendingID, _ := habits.Create(t.Context(), domain.Habit{Name: "Still pending"})
+	doneID, _ := habits.Create(t.Context(), testUserID, domain.Habit{Name: "Done today"})
+	pendingID, _ := habits.Create(t.Context(), testUserID, domain.Habit{Name: "Still pending"})
 	today := domain.Today()
 	entries.Upsert(t.Context(), domain.YesNo, domain.Entry{HabitID: doneID, Date: today, Value: domain.YesManual})
 
@@ -42,7 +42,7 @@ func TestHandleTodayEmptyState(t *testing.T) {
 
 func TestHandleEntryToggleFromTodayRemovesCompletedRow(t *testing.T) {
 	s, habits, _ := newTestServer(t)
-	id, _ := habits.Create(t.Context(), domain.Habit{Name: "Read"})
+	id, _ := habits.Create(t.Context(), testUserID, domain.Habit{Name: "Read"})
 	today := domain.Today().String()
 
 	rec := doRequest(t, s, http.MethodPost, "/habits/"+itoa(id)+"/entries/"+today+"?from=today", "")
@@ -56,7 +56,7 @@ func TestHandleEntryToggleFromTodayRemovesCompletedRow(t *testing.T) {
 
 func TestHandleHabitExportCSV(t *testing.T) {
 	s, habits, entries := newTestServer(t)
-	id, _ := habits.Create(t.Context(), domain.Habit{Name: "Meditate"})
+	id, _ := habits.Create(t.Context(), testUserID, domain.Habit{Name: "Meditate"})
 	today := domain.Today()
 	entries.Upsert(t.Context(), domain.YesNo, domain.Entry{HabitID: id, Date: today, Value: domain.YesManual})
 
@@ -86,7 +86,7 @@ func TestHandleHabitExportCSVNotFound(t *testing.T) {
 
 func TestSaveAndLoadReminder(t *testing.T) {
 	s, habits, _ := newTestServer(t)
-	id, _ := habits.Create(t.Context(), domain.Habit{Name: "Stretch"})
+	id, _ := habits.Create(t.Context(), testUserID, domain.Habit{Name: "Stretch"})
 
 	form := "name=Stretch&color=0&reminder_enabled=on&reminder_time=07:15&reminder_weekday=0&reminder_weekday=2"
 	rec := doRequest(t, s, http.MethodPost, "/habits/"+itoa(id), form)

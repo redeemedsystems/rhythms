@@ -53,6 +53,7 @@ func (f Frequency) Float64() float64 {
 
 type Habit struct {
 	ID          int64
+	UserID      int64
 	UUID        string
 	Name        string
 	Question    string

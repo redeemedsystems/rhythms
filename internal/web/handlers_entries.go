@@ -57,7 +57,7 @@ func (s *Server) handleEntryEditForm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h, err := s.habits.Get(r.Context(), id)
+	h, err := s.habits.Get(r.Context(), mustUser(r).ID, id)
 	if errors.Is(err, store.ErrNotFound) {
 		http.NotFound(w, r)
 		return
@@ -97,7 +97,7 @@ func (s *Server) handleEntryToggle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h, err := s.habits.Get(r.Context(), id)
+	h, err := s.habits.Get(r.Context(), mustUser(r).ID, id)
 	if errors.Is(err, store.ErrNotFound) {
 		http.NotFound(w, r)
 		return

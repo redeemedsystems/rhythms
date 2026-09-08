@@ -86,7 +86,7 @@ func (s *Scheduler) Tick(ctx context.Context) {
 			continue
 		}
 
-		h, err := s.Habits.Get(ctx, habitID)
+		h, err := s.Habits.GetAny(ctx, habitID)
 		if err != nil {
 			slog.Error("reminder scheduler: get habit", "habit_id", habitID, "error", err)
 			continue
@@ -136,7 +136,7 @@ type pushPayload struct {
 // a retry could accomplish there). False means every attempt failed, so the
 // caller should leave the reminder unmarked and let the next tick retry.
 func (s *Scheduler) notify(ctx context.Context, h domain.Habit) bool {
-	subs, err := s.Subscriptions.List(ctx)
+	subs, err := s.Subscriptions.List(ctx, h.UserID)
 	if err != nil {
 		slog.Error("reminder scheduler: list subscriptions", "error", err)
 		return false

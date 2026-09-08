@@ -63,7 +63,7 @@ func (s *Server) handlePushSubscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	sub := domain.PushSubscription{Endpoint: req.Endpoint, P256dh: req.Keys.P256dh, Auth: req.Keys.Auth}
-	if err := s.pushSubs.Upsert(r.Context(), sub); err != nil {
+	if err := s.pushSubs.Upsert(r.Context(), mustUser(r).ID, sub); err != nil {
 		s.serverError(w, err)
 		return
 	}

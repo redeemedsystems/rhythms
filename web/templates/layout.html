@@ -21,6 +21,13 @@ already-escaped HTML.
     <script src="/static/sortable.min.js"></script>
 </head>
 <body>
+    {{if .User}}
+    <nav class="top-nav">
+        <span class="top-nav-email">{{.User.Email}}</span>
+        {{if .User.IsAdmin}}<a href="/admin/users">Admin</a>{{end}}
+        <form method="post" action="/logout"><button type="submit" class="btn-link">Log out</button></form>
+    </nav>
+    {{end}}
     <main id="app">
         {{.Body}}
     </main>

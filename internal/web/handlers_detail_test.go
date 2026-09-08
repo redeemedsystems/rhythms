@@ -10,7 +10,7 @@ import (
 
 func TestHandleHabitDetail(t *testing.T) {
 	s, habits, entries := newTestServer(t)
-	id, _ := habits.Create(t.Context(), domain.Habit{Name: "Meditate", Freq: domain.DailyFrequency(), Type: domain.YesNo})
+	id, _ := habits.Create(t.Context(), testUserID, domain.Habit{Name: "Meditate", Freq: domain.DailyFrequency(), Type: domain.YesNo})
 	today := domain.Today()
 	entries.Upsert(t.Context(), domain.YesNo, domain.Entry{HabitID: id, Date: today, Value: domain.YesManual})
 
@@ -36,7 +36,7 @@ func TestHandleHabitDetailNotFound(t *testing.T) {
 
 func TestHandleHabitDetailEmptyHistoryDoesNotPanic(t *testing.T) {
 	s, habits, _ := newTestServer(t)
-	habits.Create(t.Context(), domain.Habit{Name: "Fresh", Freq: domain.DailyFrequency(), Type: domain.YesNo})
+	habits.Create(t.Context(), testUserID, domain.Habit{Name: "Fresh", Freq: domain.DailyFrequency(), Type: domain.YesNo})
 
 	rec := doRequest(t, s, http.MethodGet, "/habits/1", "")
 	if rec.Code != http.StatusOK {

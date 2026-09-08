@@ -7,11 +7,19 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"rhythms/internal/config"
 	"rhythms/internal/domain"
 	webassets "rhythms/web"
 )
+
+// testUserID is the account every doRequest call is authenticated as by
+// default, so every existing handler test keeps exercising the same
+// single-user behavior it always did — habits created through a handler in
+// these tests land on this user automatically (mustUser(r).ID resolves to
+// it), and doRequest attaches a matching session cookie to every request.
+const testUserID = 1
 
 func newTestServer(t *testing.T) (*Server, *fakeHabitRepo, *fakeEntryRepo) {
 	t.Helper()
@@ -23,7 +31,19 @@ func newTestServer(t *testing.T) (*Server, *fakeHabitRepo, *fakeEntryRepo) {
 	entries := newFakeEntryRepo()
 	reminders := newFakeReminderRepo()
 	pushSubs := newFakePushSubscriptionRepo()
-	return &Server{cfg: config.Config{}, habits: habits, entries: entries, reminders: reminders, pushSubs: pushSubs, tmpl: tmpl}, habits, entries
+	users := newFakeUserRepo()
+	users.users[testUserID] = domain.User{ID: testUserID, Email: "test@example.com"}
+	users.nextID = testUserID + 1 // Create() must never hand out an id that collides with the seeded user
+	return &Server{
+		cfg:           config.Config{},
+		habits:        habits,
+		entries:       entries,
+		reminders:     reminders,
+		pushSubs:      pushSubs,
+		users:         users,
+		sessionSecret: []byte("test-session-secret"),
+		tmpl:          tmpl,
+	}, habits, entries
 }
 
 func doRequest(t *testing.T, s *Server, method, target string, body string) *httptest.ResponseRecorder {
@@ -38,6 +58,10 @@ func doRequest(t *testing.T, s *Server, method, target string, body string) *htt
 	if method == http.MethodPost {
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	}
+	req.AddCookie(&http.Cookie{
+		Name:  sessionCookieName,
+		Value: signSession(s.sessionSecret, testUserID, time.Now().Add(time.Hour)),
+	})
 	rec := httptest.NewRecorder()
 	s.Routes().ServeHTTP(rec, req)
 	return rec
@@ -99,7 +123,7 @@ func TestHandleHabitCreateValidationError(t *testing.T) {
 
 func TestHandleEntryToggleCycle(t *testing.T) {
 	s, habits, _ := newTestServer(t)
-	id, _ := habits.Create(t.Context(), domain.Habit{Name: "Read"})
+	id, _ := habits.Create(t.Context(), testUserID, domain.Habit{Name: "Read"})
 	today := domain.Today().String()
 
 	rec := doRequest(t, s, http.MethodPost, "/habits/"+itoa(id)+"/entries/"+today, "")
@@ -115,7 +139,7 @@ func TestHandleEntryToggleCycle(t *testing.T) {
 
 func TestHandleHabitArchiveExcludesFromActiveList(t *testing.T) {
 	s, habits, _ := newTestServer(t)
-	id, _ := habits.Create(t.Context(), domain.Habit{Name: "Stretch"})
+	id, _ := habits.Create(t.Context(), testUserID, domain.Habit{Name: "Stretch"})
 
 	rec := doRequest(t, s, http.MethodPost, "/habits/"+itoa(id)+"/archive", "")
 	if rec.Code != http.StatusOK {

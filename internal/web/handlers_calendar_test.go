@@ -10,10 +10,10 @@ import (
 
 func TestBuildCalendarVMLayout(t *testing.T) {
 	s, habits, entries := newTestServer(t)
-	id, _ := habits.Create(t.Context(), domain.Habit{Name: "Read", Type: domain.YesNo, Freq: domain.DailyFrequency()})
+	id, _ := habits.Create(t.Context(), testUserID, domain.Habit{Name: "Read", Type: domain.YesNo, Freq: domain.DailyFrequency()})
 	entries.Upsert(t.Context(), domain.YesNo, domain.Entry{HabitID: id, Date: domain.NewDate(2026, 9, 15), Value: domain.YesManual})
 
-	h, _ := habits.Get(t.Context(), id)
+	h, _ := habits.Get(t.Context(), testUserID, id)
 	vm, err := s.buildCalendarVM(t.Context(), h, domain.NewDate(2026, 9, 1))
 	if err != nil {
 		t.Fatalf("buildCalendarVM: %v", err)
@@ -56,8 +56,8 @@ func TestBuildCalendarVMLayout(t *testing.T) {
 
 func TestBuildCalendarVMFutureDaysMarked(t *testing.T) {
 	s, habits, _ := newTestServer(t)
-	id, _ := habits.Create(t.Context(), domain.Habit{Name: "Read", Type: domain.YesNo, Freq: domain.DailyFrequency()})
-	h, _ := habits.Get(t.Context(), id)
+	id, _ := habits.Create(t.Context(), testUserID, domain.Habit{Name: "Read", Type: domain.YesNo, Freq: domain.DailyFrequency()})
+	h, _ := habits.Get(t.Context(), testUserID, id)
 
 	today := domain.Today()
 	vm, err := s.buildCalendarVM(t.Context(), h, today.StartOfMonth())
@@ -94,7 +94,7 @@ func TestBuildCalendarVMFutureDaysMarked(t *testing.T) {
 
 func TestHandleHabitCalendarDefaultsToCurrentMonth(t *testing.T) {
 	s, habits, _ := newTestServer(t)
-	id, _ := habits.Create(t.Context(), domain.Habit{Name: "Read"})
+	id, _ := habits.Create(t.Context(), testUserID, domain.Habit{Name: "Read"})
 
 	rec := doRequest(t, s, http.MethodGet, "/habits/"+itoa(id)+"/calendar", "")
 	if rec.Code != http.StatusOK {
@@ -107,7 +107,7 @@ func TestHandleHabitCalendarDefaultsToCurrentMonth(t *testing.T) {
 
 func TestHandleHabitCalendarExplicitMonth(t *testing.T) {
 	s, habits, _ := newTestServer(t)
-	id, _ := habits.Create(t.Context(), domain.Habit{Name: "Read"})
+	id, _ := habits.Create(t.Context(), testUserID, domain.Habit{Name: "Read"})
 
 	rec := doRequest(t, s, http.MethodGet, "/habits/"+itoa(id)+"/calendar?month=2026-03", "")
 	if rec.Code != http.StatusOK {
@@ -128,7 +128,7 @@ func TestHandleHabitCalendarNotFound(t *testing.T) {
 
 func TestHandleEntryToggleFromCalendarRerendersGrid(t *testing.T) {
 	s, habits, _ := newTestServer(t)
-	id, _ := habits.Create(t.Context(), domain.Habit{Name: "Read", Type: domain.YesNo, Freq: domain.DailyFrequency()})
+	id, _ := habits.Create(t.Context(), testUserID, domain.Habit{Name: "Read", Type: domain.YesNo, Freq: domain.DailyFrequency()})
 	today := domain.Today()
 
 	target := "/habits/" + itoa(id) + "/entries/" + today.String() + "?from=calendar&month=" + today.Format("2006-01")
@@ -147,7 +147,7 @@ func TestHandleEntryToggleFromCalendarRerendersGrid(t *testing.T) {
 
 func TestHandleEntryEditFormCalendarContext(t *testing.T) {
 	s, habits, _ := newTestServer(t)
-	id, _ := habits.Create(t.Context(), domain.Habit{Name: "Water", Type: domain.Numerical, Unit: "glasses"})
+	id, _ := habits.Create(t.Context(), testUserID, domain.Habit{Name: "Water", Type: domain.Numerical, Unit: "glasses"})
 	today := domain.Today()
 
 	target := "/habits/" + itoa(id) + "/entries/" + today.String() + "?from=calendar&month=" + today.Format("2006-01")

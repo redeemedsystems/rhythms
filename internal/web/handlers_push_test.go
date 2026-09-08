@@ -43,7 +43,7 @@ func TestHandlePushSubscribeAndUnsubscribe(t *testing.T) {
 		t.Fatalf("subscribe status = %d, want 200", rec.Code)
 	}
 
-	subs, err := s.pushSubs.List(t.Context())
+	subs, err := s.pushSubs.List(t.Context(), testUserID)
 	if err != nil || len(subs) != 1 || subs[0].Endpoint != "https://push.example/abc" {
 		t.Fatalf("subs after subscribe = %+v, err=%v", subs, err)
 	}
@@ -52,7 +52,7 @@ func TestHandlePushSubscribeAndUnsubscribe(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("unsubscribe status = %d, want 200", rec.Code)
 	}
-	subs, err = s.pushSubs.List(t.Context())
+	subs, err = s.pushSubs.List(t.Context(), testUserID)
 	if err != nil || len(subs) != 0 {
 		t.Fatalf("subs after unsubscribe = %+v, err=%v, want empty", subs, err)
 	}

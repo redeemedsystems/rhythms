@@ -16,7 +16,11 @@ func newTestEntryRepo(t *testing.T) (*EntryRepo, int64) {
 	}
 	t.Cleanup(func() { db.Close() })
 
-	habitID, err := NewHabitRepo(db).Create(context.Background(), domain.Habit{Name: "Test habit"})
+	userID, err := NewUserRepo(db).Create(context.Background(), domain.User{Email: "test@example.com"})
+	if err != nil {
+		t.Fatalf("seed user: %v", err)
+	}
+	habitID, err := NewHabitRepo(db).Create(context.Background(), userID, domain.Habit{Name: "Test habit"})
 	if err != nil {
 		t.Fatalf("Create habit: %v", err)
 	}

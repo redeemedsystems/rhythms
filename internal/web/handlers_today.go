@@ -16,7 +16,7 @@ type todayPageVM struct {
 // to the M5 PWA "today" view and push reminders — a page you check, rather
 // than a notification that finds you.
 func (s *Server) handleToday(w http.ResponseWriter, r *http.Request) {
-	habits, err := s.habits.List(r.Context(), false)
+	habits, err := s.habits.List(r.Context(), mustUser(r).ID, false)
 	if err != nil {
 		s.serverError(w, err)
 		return
@@ -35,7 +35,7 @@ func (s *Server) handleToday(w http.ResponseWriter, r *http.Request) {
 		items = append(items, vm)
 	}
 
-	s.render(w, "page_today", todayPageVM{
+	s.render(w, r, "page_today", todayPageVM{
 		Date:  domain.Today().Format("Monday, January 2"),
 		Items: items,
 	})

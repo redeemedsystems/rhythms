@@ -2,7 +2,9 @@ package store
 
 import (
 	"context"
+	"crypto/rand"
 	"database/sql"
+	"encoding/hex"
 	"errors"
 	"fmt"
 
@@ -74,4 +76,34 @@ func (r *SettingsRepo) EnsureVAPIDKeys(ctx context.Context) (public, private str
 		return "", "", err
 	}
 	return public, private, nil
+}
+
+const settingSessionSecret = "session_hmac_secret"
+
+// EnsureSessionSecret returns the app's persisted session-signing key,
+// generating and storing one on first run — same pattern as
+// EnsureVAPIDKeys, and for the same reason: it must stay stable across
+// restarts, or every existing session cookie would fail to verify the
+// moment the process restarted.
+func (r *SettingsRepo) EnsureSessionSecret(ctx context.Context) ([]byte, error) {
+	hexSecret, ok, err := r.Get(ctx, settingSessionSecret)
+	if err != nil {
+		return nil, err
+	}
+	if ok {
+		secret, err := hex.DecodeString(hexSecret)
+		if err != nil {
+			return nil, fmt.Errorf("decode session secret: %w", err)
+		}
+		return secret, nil
+	}
+
+	secret := make([]byte, 32)
+	if _, err := rand.Read(secret); err != nil {
+		return nil, fmt.Errorf("generate session secret: %w", err)
+	}
+	if err := r.Set(ctx, settingSessionSecret, hex.EncodeToString(secret)); err != nil {
+		return nil, err
+	}
+	return secret, nil
 }

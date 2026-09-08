@@ -7,17 +7,35 @@ import "context"
 // file exist so handlers (and the reminder scheduler) can be tested against
 // fakes without a real database; see internal/web/fakes_test.go and
 // internal/reminder/scheduler_test.go.
+//
+// Every method below except GetAny takes userID and scopes to it — a habit
+// that exists but belongs to a different user is indistinguishable from a
+// nonexistent one (ErrNotFound for both), so a guessed/stolen id never
+// leaks whether it belongs to someone else. The repo enforces this, not
+// the caller, precisely so a handler bug (forgetting to check ownership)
+// can't silently cross tenants.
 type HabitRepo interface {
-	List(ctx context.Context, includeArchived bool) ([]Habit, error)
-	Get(ctx context.Context, id int64) (Habit, error)
-	Create(ctx context.Context, h Habit) (int64, error)
-	Update(ctx context.Context, h Habit) error
-	SetArchived(ctx context.Context, id int64, archived bool) error
-	Delete(ctx context.Context, id int64) error
+	List(ctx context.Context, userID int64, includeArchived bool) ([]Habit, error)
+	Get(ctx context.Context, userID, id int64) (Habit, error)
+
+	// GetAny bypasses ownership scoping entirely. It exists solely for
+	// trusted background code that legitimately needs to look up any
+	// user's habit (the reminder scheduler, scheduling for everyone) — it
+	// must never be reachable from a web handler, which always has an
+	// attacker-controlled id and must use the scoped Get instead.
+	GetAny(ctx context.Context, id int64) (Habit, error)
+
+	Create(ctx context.Context, userID int64, h Habit) (int64, error)
+	Update(ctx context.Context, userID int64, h Habit) error
+	SetArchived(ctx context.Context, userID, id int64, archived bool) error
+	Delete(ctx context.Context, userID, id int64) error
 
 	// Reorder assigns positions 0..len(orderedIDs)-1 in the given order, in
-	// a single transaction. It's the persistence side of drag-reorder.
-	Reorder(ctx context.Context, orderedIDs []int64) error
+	// a single transaction. It's the persistence side of drag-reorder. Any
+	// id in orderedIDs that isn't owned by userID is rejected wholesale
+	// (ErrNotFound) rather than silently skipped, so a caller never gets a
+	// false "success" for an id it didn't actually reorder.
+	Reorder(ctx context.Context, userID int64, orderedIDs []int64) error
 }
 
 // EntryRepo persists per-day Entry records for habits.
@@ -57,8 +75,16 @@ type ReminderRepo interface {
 
 // PushSubscriptionRepo persists browsers' Web Push registrations.
 type PushSubscriptionRepo interface {
-	List(ctx context.Context) ([]PushSubscription, error)
-	Upsert(ctx context.Context, s PushSubscription) error
+	// List returns only userID's own subscriptions — the reminder
+	// scheduler calls this once per due reminder, scoped to that habit's
+	// owner, so a notification only ever reaches its owner's devices.
+	List(ctx context.Context, userID int64) ([]PushSubscription, error)
+	Upsert(ctx context.Context, userID int64, s PushSubscription) error
+
+	// Delete stays unscoped by user: the endpoint is an unguessable,
+	// high-entropy secret URL assigned by the push service, not something
+	// an attacker can enumerate. Worst case of a wrong caller deleting one
+	// is that device stops getting notifications — not a data leak.
 	Delete(ctx context.Context, endpoint string) error
 }
 
@@ -68,4 +94,18 @@ type PushSubscriptionRepo interface {
 type ReminderLogRepo interface {
 	WasSent(ctx context.Context, habitID int64, date Date) (bool, error)
 	MarkSent(ctx context.Context, habitID int64, date Date) error
+}
+
+// UserRepo persists accounts. An admin invites an email (Create), which
+// creates a User with no GoogleSub yet; that email's first successful
+// Google sign-in calls SetGoogleSub to activate it. Signing in with an
+// email that has no User row at all is rejected elsewhere (there's no
+// open signup) — this repo just stores what admins have invited.
+type UserRepo interface {
+	Get(ctx context.Context, id int64) (User, error)
+	GetByEmail(ctx context.Context, email string) (User, error)
+	List(ctx context.Context) ([]User, error)
+	Create(ctx context.Context, u User) (int64, error)
+	SetGoogleSub(ctx context.Context, id int64, sub string) error
+	Delete(ctx context.Context, id int64) error
 }

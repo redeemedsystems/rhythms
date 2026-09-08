@@ -36,6 +36,10 @@ func main() {
 	}
 
 	cfg := config.Load()
+	if missing := cfg.Missing(); len(missing) > 0 {
+		slog.Error("missing required config — auth is mandatory, there's no disabled mode", "missing", missing)
+		os.Exit(1)
+	}
 
 	db, err := store.Open(cfg.DBPath)
 	if err != nil {
@@ -53,8 +57,17 @@ func main() {
 		slog.Error("failed to set up VAPID keys", "error", err)
 		os.Exit(1)
 	}
+	sessionSecret, err := settings.EnsureSessionSecret(ctx)
+	if err != nil {
+		slog.Error("failed to set up session secret", "error", err)
+		os.Exit(1)
+	}
+	if err := store.NewUserRepo(db).EnsureAdmin(ctx, cfg.AdminEmail); err != nil {
+		slog.Error("failed to ensure admin user", "error", err, "email", cfg.AdminEmail)
+		os.Exit(1)
+	}
 
-	srv, err := web.NewServer(cfg, db, vapidPublic)
+	srv, err := web.NewServer(cfg, db, vapidPublic, sessionSecret)
 	if err != nil {
 		slog.Error("failed to build server", "error", err)
 		os.Exit(1)
@@ -79,7 +92,7 @@ func main() {
 		httpServer.Shutdown(shutdownCtx)
 	}()
 
-	slog.Info("rhythms starting", "version", version, "addr", cfg.Addr, "db_path", cfg.DBPath, "auth_enabled", cfg.AuthEnabled())
+	slog.Info("rhythms starting", "version", version, "addr", cfg.Addr, "db_path", cfg.DBPath, "base_url", cfg.BaseURL)
 	if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		slog.Error("server exited", "error", err)
 		os.Exit(1)

@@ -18,6 +18,7 @@ var (
 	_ domain.EntryRepo            = (*fakeEntryRepo)(nil)
 	_ domain.ReminderRepo         = (*fakeReminderRepo)(nil)
 	_ domain.PushSubscriptionRepo = (*fakePushSubscriptionRepo)(nil)
+	_ domain.UserRepo             = (*fakeUserRepo)(nil)
 )
 
 type fakeHabitRepo struct {
@@ -29,9 +30,12 @@ func newFakeHabitRepo() *fakeHabitRepo {
 	return &fakeHabitRepo{habits: map[int64]domain.Habit{}, nextID: 1}
 }
 
-func (f *fakeHabitRepo) List(ctx context.Context, includeArchived bool) ([]domain.Habit, error) {
+func (f *fakeHabitRepo) List(ctx context.Context, userID int64, includeArchived bool) ([]domain.Habit, error) {
 	var out []domain.Habit
 	for _, h := range f.habits {
+		if h.UserID != userID {
+			continue
+		}
 		if h.Archived && !includeArchived {
 			continue
 		}
@@ -40,7 +44,15 @@ func (f *fakeHabitRepo) List(ctx context.Context, includeArchived bool) ([]domai
 	return out, nil
 }
 
-func (f *fakeHabitRepo) Get(ctx context.Context, id int64) (domain.Habit, error) {
+func (f *fakeHabitRepo) Get(ctx context.Context, userID, id int64) (domain.Habit, error) {
+	h, ok := f.habits[id]
+	if !ok || h.UserID != userID {
+		return domain.Habit{}, fmt.Errorf("habit %d: %w", id, store.ErrNotFound)
+	}
+	return h, nil
+}
+
+func (f *fakeHabitRepo) GetAny(ctx context.Context, id int64) (domain.Habit, error) {
 	h, ok := f.habits[id]
 	if !ok {
 		return domain.Habit{}, fmt.Errorf("habit %d: %w", id, store.ErrNotFound)
@@ -48,7 +60,7 @@ func (f *fakeHabitRepo) Get(ctx context.Context, id int64) (domain.Habit, error)
 	return h, nil
 }
 
-func (f *fakeHabitRepo) Create(ctx context.Context, h domain.Habit) (int64, error) {
+func (f *fakeHabitRepo) Create(ctx context.Context, userID int64, h domain.Habit) (int64, error) {
 	if h.Type == "" {
 		h.Type = domain.YesNo
 	}
@@ -59,22 +71,25 @@ func (f *fakeHabitRepo) Create(ctx context.Context, h domain.Habit) (int64, erro
 		h.Freq = domain.DailyFrequency()
 	}
 	h.ID = f.nextID
+	h.UserID = userID
 	f.nextID++
 	f.habits[h.ID] = h
 	return h.ID, nil
 }
 
-func (f *fakeHabitRepo) Update(ctx context.Context, h domain.Habit) error {
-	if _, ok := f.habits[h.ID]; !ok {
+func (f *fakeHabitRepo) Update(ctx context.Context, userID int64, h domain.Habit) error {
+	existing, ok := f.habits[h.ID]
+	if !ok || existing.UserID != userID {
 		return fmt.Errorf("habit %d: %w", h.ID, store.ErrNotFound)
 	}
+	h.UserID = userID
 	f.habits[h.ID] = h
 	return nil
 }
 
-func (f *fakeHabitRepo) SetArchived(ctx context.Context, id int64, archived bool) error {
+func (f *fakeHabitRepo) SetArchived(ctx context.Context, userID, id int64, archived bool) error {
 	h, ok := f.habits[id]
-	if !ok {
+	if !ok || h.UserID != userID {
 		return fmt.Errorf("habit %d: %w", id, store.ErrNotFound)
 	}
 	h.Archived = archived
@@ -82,18 +97,19 @@ func (f *fakeHabitRepo) SetArchived(ctx context.Context, id int64, archived bool
 	return nil
 }
 
-func (f *fakeHabitRepo) Delete(ctx context.Context, id int64) error {
-	if _, ok := f.habits[id]; !ok {
+func (f *fakeHabitRepo) Delete(ctx context.Context, userID, id int64) error {
+	h, ok := f.habits[id]
+	if !ok || h.UserID != userID {
 		return fmt.Errorf("habit %d: %w", id, store.ErrNotFound)
 	}
 	delete(f.habits, id)
 	return nil
 }
 
-func (f *fakeHabitRepo) Reorder(ctx context.Context, orderedIDs []int64) error {
+func (f *fakeHabitRepo) Reorder(ctx context.Context, userID int64, orderedIDs []int64) error {
 	for pos, id := range orderedIDs {
 		h, ok := f.habits[id]
-		if !ok {
+		if !ok || h.UserID != userID {
 			return fmt.Errorf("habit %d: %w", id, store.ErrNotFound)
 		}
 		h.Position = pos
@@ -181,20 +197,88 @@ func newFakePushSubscriptionRepo() *fakePushSubscriptionRepo {
 	return &fakePushSubscriptionRepo{subs: map[string]domain.PushSubscription{}}
 }
 
-func (f *fakePushSubscriptionRepo) List(ctx context.Context) ([]domain.PushSubscription, error) {
-	out := make([]domain.PushSubscription, 0, len(f.subs))
+func (f *fakePushSubscriptionRepo) List(ctx context.Context, userID int64) ([]domain.PushSubscription, error) {
+	var out []domain.PushSubscription
 	for _, s := range f.subs {
-		out = append(out, s)
+		if s.UserID == userID {
+			out = append(out, s)
+		}
 	}
 	return out, nil
 }
 
-func (f *fakePushSubscriptionRepo) Upsert(ctx context.Context, s domain.PushSubscription) error {
+func (f *fakePushSubscriptionRepo) Upsert(ctx context.Context, userID int64, s domain.PushSubscription) error {
+	s.UserID = userID
 	f.subs[s.Endpoint] = s
 	return nil
 }
 
 func (f *fakePushSubscriptionRepo) Delete(ctx context.Context, endpoint string) error {
 	delete(f.subs, endpoint)
+	return nil
+}
+
+type fakeUserRepo struct {
+	users  map[int64]domain.User
+	nextID int64
+}
+
+func newFakeUserRepo() *fakeUserRepo {
+	return &fakeUserRepo{users: map[int64]domain.User{}, nextID: 1}
+}
+
+func (f *fakeUserRepo) Get(ctx context.Context, id int64) (domain.User, error) {
+	u, ok := f.users[id]
+	if !ok {
+		return domain.User{}, fmt.Errorf("user %d: %w", id, store.ErrNotFound)
+	}
+	return u, nil
+}
+
+func (f *fakeUserRepo) GetByEmail(ctx context.Context, email string) (domain.User, error) {
+	for _, u := range f.users {
+		if u.Email == email {
+			return u, nil
+		}
+	}
+	return domain.User{}, fmt.Errorf("user %q: %w", email, store.ErrNotFound)
+}
+
+func (f *fakeUserRepo) List(ctx context.Context) ([]domain.User, error) {
+	out := make([]domain.User, 0, len(f.users))
+	for _, u := range f.users {
+		out = append(out, u)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
+	return out, nil
+}
+
+func (f *fakeUserRepo) Create(ctx context.Context, u domain.User) (int64, error) {
+	for _, existing := range f.users {
+		if existing.Email == u.Email {
+			return 0, fmt.Errorf("user %q: %w", u.Email, store.ErrAlreadyExists)
+		}
+	}
+	u.ID = f.nextID
+	f.nextID++
+	f.users[u.ID] = u
+	return u.ID, nil
+}
+
+func (f *fakeUserRepo) SetGoogleSub(ctx context.Context, id int64, sub string) error {
+	u, ok := f.users[id]
+	if !ok {
+		return fmt.Errorf("user %d: %w", id, store.ErrNotFound)
+	}
+	u.GoogleSub = sub
+	f.users[id] = u
+	return nil
+}
+
+func (f *fakeUserRepo) Delete(ctx context.Context, id int64) error {
+	if _, ok := f.users[id]; !ok {
+		return fmt.Errorf("user %d: %w", id, store.ErrNotFound)
+	}
+	delete(f.users, id)
 	return nil
 }

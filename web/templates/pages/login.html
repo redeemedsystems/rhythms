@@ -1,0 +1,19 @@
+{{define "page_login"}}
+<div class="page-header">
+    <h1>Rhythms</h1>
+</div>
+
+{{if eq .Error "not_invited"}}
+    <p class="form-error">That Google account hasn't been invited. Ask an admin to add it.</p>
+{{else if eq .Error "email_unverified"}}
+    <p class="form-error">That Google account's email isn't verified.</p>
+{{else if eq .Error "state_mismatch"}}
+    <p class="form-error">Sign-in expired or was invalid — try again.</p>
+{{else if eq .Error "exchange_failed"}}
+    <p class="form-error">Sign-in with Google failed — try again.</p>
+{{else if eq .Error "account_mismatch"}}
+    <p class="form-error">That account no longer matches — contact an admin.</p>
+{{end}}
+
+<a href="/auth/google/login" class="btn btn-primary">Sign in with Google</a>
+{{end}}
