@@ -1,5 +1,12 @@
 {{define "today_item"}}
 <li class="habit-row today-item" id="habit-{{.ID}}" style="--habit-color: {{.Color}}">
+    <div class="habit-info">
+        <a href="/habits/{{.ID}}" class="habit-name">{{.Name}}</a>
+        {{if .Question}}<div class="habit-question">{{.Question}}</div>{{end}}
+    </div>
+
+    {{if .CurrentStreak}}<span class="streak-badge">&#128293; {{.CurrentStreak}}</span>{{end}}
+
     {{if .IsNumerical}}
         <span id="habit-{{.ID}}-value">
             <button
@@ -18,12 +25,5 @@
             aria-label="Mark {{.Name}} done"
         >&#10003;</button>
     {{end}}
-
-    <div class="habit-info">
-        <a href="/habits/{{.ID}}" class="habit-name">{{.Name}}</a>
-        {{if .Question}}<div class="habit-question">{{.Question}}</div>{{end}}
-    </div>
-
-    {{if .CurrentStreak}}<span class="streak-badge">&#128293; {{.CurrentStreak}}</span>{{end}}
 </li>
 {{end}}
