@@ -27,6 +27,21 @@ func basicAuth(user, pass string, next http.Handler) http.Handler {
 	})
 }
 
+// cacheStatic sets a bounded cache lifetime on embedded static assets.
+// http.FileServerFS can't offer a real validator here — go:embed files carry
+// a zero ModTime, so http.ServeContent never emits Last-Modified/ETag or
+// handles conditional requests for them — and asset URLs aren't
+// content-hashed, so a max-age longer than the gap between deploys risks a
+// browser holding stale CSS/JS past a real change. An hour bounds that
+// staleness to something a redeploy is very unlikely to land inside, while
+// still skipping a full re-fetch on every page view within a session.
+func cacheStatic(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "public, max-age=3600")
+		next.ServeHTTP(w, r)
+	})
+}
+
 func logging(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()

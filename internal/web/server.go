@@ -85,7 +85,7 @@ func (s *Server) Routes() http.Handler {
 	if err != nil {
 		panic(err) // programmer error: embed FS is malformed
 	}
-	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServerFS(staticFS)))
+	mux.Handle("GET /static/", cacheStatic(http.StripPrefix("/static/", http.FileServerFS(staticFS))))
 
 	var handler http.Handler = mux
 	handler = basicAuth(s.cfg.BasicAuthUser, s.cfg.BasicAuthPass, handler)
