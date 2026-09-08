@@ -163,7 +163,7 @@ a { color: inherit; }
 .history-square-1, .history-square-2, .history-square-complete { background: var(--habit-color, #388e3c); border-color: transparent; }
 .history-square-3 { border-style: dashed; }
 .history-square-today { outline: 2px solid var(--muted); outline-offset: 1px; }
-.history-square[disabled], span.history-square { cursor: default; }
+.history-square[disabled] { cursor: default; }
 
 .habit-actions {
     flex: 0 0 auto;
@@ -285,6 +285,14 @@ input[type="number"] {
 
 .numeric-entry-form { display: flex; flex-direction: row; align-items: center; gap: 0.4rem; }
 .numeric-entry-form input[type="number"] { width: 5rem; padding: 0.3rem; }
+
+/* A history-strip square is tiny (0.9rem) - the expanded form obviously
+   can't fit inside that footprint, but it should still stay compact rather
+   than blowing up to the same size as the today-cell/calendar-day forms,
+   which have more room to work with. */
+.history-strip .numeric-entry-form { gap: 0.2rem; }
+.history-strip .numeric-entry-form input[type="number"] { width: 3rem; padding: 0.15rem; font-size: 0.75rem; }
+.history-strip .numeric-entry-form .btn-primary { font-size: 0.7rem; padding: 0.15rem 0.3rem; }
 
 .drag-handle {
     flex: 0 0 auto;

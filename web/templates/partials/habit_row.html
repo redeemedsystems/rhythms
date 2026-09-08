@@ -26,10 +26,13 @@
     <div class="history-strip">
         {{range .History}}
             {{if $.IsNumerical}}
-                <span
+                <button
                     class="history-square{{if .Completed}} history-square-complete{{end}}{{if .IsToday}} history-square-today{{end}}"
+                    hx-get="/habits/{{$.ID}}/entries/{{.Date}}"
+                    hx-target="this"
+                    hx-swap="outerHTML"
                     title="{{.Date}}"
-                ></span>
+                ></button>
             {{else}}
                 <button
                     class="history-square history-square-{{.Value}}{{if .Completed}} history-square-complete{{end}}{{if .IsToday}} history-square-today{{end}}"

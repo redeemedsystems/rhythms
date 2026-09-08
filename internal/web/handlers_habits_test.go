@@ -1,6 +1,7 @@
 package web
 
 import (
+	"fmt"
 	"html/template"
 	"net/http"
 	"net/http/httptest"
@@ -152,6 +153,37 @@ func TestHandleHabitArchiveExcludesFromActiveList(t *testing.T) {
 	rec = doRequest(t, s, http.MethodGet, "/?archived=1", "")
 	if !strings.Contains(rec.Body.String(), "Stretch") {
 		t.Errorf("archived habit should appear in the archived view: %s", rec.Body.String())
+	}
+}
+
+func TestHandleIndexNumericHabitHistorySquaresAreClickable(t *testing.T) {
+	s, habits, _ := newTestServer(t)
+	id, _ := habits.Create(t.Context(), testUserID, domain.Habit{Name: "Water", Type: domain.Numerical, Unit: "glasses"})
+
+	rec := doRequest(t, s, http.MethodGet, "/", "")
+	body := rec.Body.String()
+
+	wantGet := fmt.Sprintf(`hx-get="/habits/%d/entries/`, id)
+	if !strings.Contains(body, wantGet) {
+		t.Errorf("expected a clickable (hx-get) history square for a numeric habit, got: %s", body)
+	}
+	if strings.Contains(body, `<span class="history-square`) {
+		t.Errorf("numeric habit's history strip should no longer render inert <span> squares: %s", body)
+	}
+}
+
+func TestEntryEditFormOpensForPastDayOnNumericHabit(t *testing.T) {
+	s, habits, entries := newTestServer(t)
+	id, _ := habits.Create(t.Context(), testUserID, domain.Habit{Name: "Water", Type: domain.Numerical, Unit: "glasses"})
+	pastDate := domain.Today().AddDays(-3)
+	entries.Upsert(t.Context(), domain.Numerical, domain.Entry{HabitID: id, Date: pastDate, NumericValue: 4})
+
+	rec := doRequest(t, s, http.MethodGet, "/habits/"+itoa(id)+"/entries/"+pastDate.String(), "")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	if !strings.Contains(rec.Body.String(), `value="4"`) {
+		t.Errorf("expected the past day's existing value (4) pre-filled in the form, got: %s", rec.Body.String())
 	}
 }
 
