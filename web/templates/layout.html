@@ -24,6 +24,7 @@ already-escaped HTML.
     {{if .User}}
     <nav class="top-nav">
         <span class="top-nav-email">{{.User.Email}}</span>
+        <a href="/settings">Settings</a>
         {{if .User.IsAdmin}}<a href="/admin/users">Admin</a>{{end}}
         <form method="post" action="/logout"><button type="submit" class="btn-link">Log out</button></form>
     </nav>

@@ -63,7 +63,7 @@
 
     document.addEventListener('DOMContentLoaded', async function () {
         const btn = document.getElementById('push-toggle');
-        if (!btn) return; // only present on /today
+        if (!btn) return; // only present on /settings
 
         let registration = null;
         try {

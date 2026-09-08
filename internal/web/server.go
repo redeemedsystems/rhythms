@@ -69,6 +69,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /{$}", s.handleIndex)
 	mux.HandleFunc("GET /today", s.handleToday)
 	mux.HandleFunc("GET /dashboard", s.handleDashboard)
+	mux.HandleFunc("GET /settings", s.handleSettings)
 	mux.HandleFunc("GET /manifest.webmanifest", s.handleManifest)
 	mux.HandleFunc("GET /sw.js", s.handleServiceWorker)
 	mux.HandleFunc("POST /push/subscribe", s.handlePushSubscribe)
