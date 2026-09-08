@@ -10,8 +10,6 @@ import (
 	"rhythms/internal/store"
 )
 
-const scoreChartDays = 90
-
 type habitDetailVM struct {
 	ID            int64
 	Name          string
@@ -23,18 +21,17 @@ type habitDetailVM struct {
 	CurrentStreak int
 	ScorePercent  int
 
-	ScoreChart   template.HTML
 	StreakChart  template.HTML
 	HeatmapChart template.HTML
-	WeekdayChart template.HTML
 
 	Calendar calendarVM
 }
 
-// handleHabitDetail renders the habit detail page: score/streak/weekday
-// charts plus a calendar heatmap, all server-rendered SVG built from a
-// single pass over the habit's full computed history (see buildHabitVM's
-// doc comment for why ComputeEntries needs the whole history, not a window).
+// handleHabitDetail renders the habit detail page: the score stat, a
+// best-streaks chart, and a calendar heatmap, all server-rendered SVG built
+// from a single pass over the habit's full computed history (see
+// buildHabitVM's doc comment for why ComputeEntries needs the whole
+// history, not a window).
 func (s *Server) handleHabitDetail(w http.ResponseWriter, r *http.Request) {
 	id, err := parseIDParam(r)
 	if err != nil {
@@ -68,17 +65,6 @@ func (s *Server) handleHabitDetail(w http.ResponseWriter, r *http.Request) {
 	dense := domain.DenseRange(computed, from, today)
 
 	scoreSeries := domain.ScoreSeries(h, dense)
-	scoreWindow := scoreSeries
-	if len(scoreWindow) > scoreChartDays {
-		scoreWindow = scoreWindow[len(scoreWindow)-scoreChartDays:]
-	}
-
-	var weekdayCounts [7]int
-	for _, e := range dense {
-		if domain.IsCompleted(h, e) {
-			weekdayCounts[int(e.Date.Weekday())]++
-		}
-	}
 
 	color := colorHex(h.Color)
 	vm := habitDetailVM{
@@ -90,10 +76,8 @@ func (s *Server) handleHabitDetail(w http.ResponseWriter, r *http.Request) {
 		IsNumerical:   h.Type == domain.Numerical,
 		Unit:          h.Unit,
 		CurrentStreak: domain.CurrentStreak(h, dense, today),
-		ScoreChart:    charts.ScoreLineChart(scoreWindow, color),
 		StreakChart:   charts.StreakBarChart(domain.Streaks(h, dense), color),
 		HeatmapChart:  charts.CalendarHeatmap(h, dense, charts.HeatmapDefaultWeeks, color),
-		WeekdayChart:  charts.WeekdayBarChart(weekdayCounts, color),
 	}
 	if len(scoreSeries) > 0 {
 		vm.ScorePercent = int(scoreSeries[len(scoreSeries)-1].Value*100 + 0.5)

@@ -19,7 +19,7 @@ func TestHandleHabitDetail(t *testing.T) {
 		t.Fatalf("status = %d, want 200", rec.Code)
 	}
 	body := rec.Body.String()
-	for _, want := range []string{"Meditate", "chart-line", "chart-bars", "chart-heatmap", "chart-weekday"} {
+	for _, want := range []string{"Meditate", "chart-bars", "chart-heatmap"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("detail page missing %q", want)
 		}
